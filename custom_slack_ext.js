@@ -124,6 +124,19 @@ try {
                 event.preventDefault();
                 event.stopPropagation();
                 
+                // Store original button state
+                const originalText = aiButton.innerHTML;
+                const originalDisabled = aiButton.disabled;
+                const originalOpacity = aiButton.style.opacity;
+                
+                // Function to reset button to original state
+                const resetButton = () => {
+                    aiButton.innerHTML = originalText;
+                    aiButton.disabled = originalDisabled;
+                    aiButton.style.opacity = originalOpacity || '1';
+                    console.log('SLACK EXTENSION: Button reset to original state');
+                };
+                
                 try {
                     // Find the message input
                     const messageInput = document.querySelector('[data-qa="message_input"]') || 
@@ -132,19 +145,24 @@ try {
                     
                     if (!messageInput) {
                         console.log('SLACK EXTENSION: No message input found');
-                        return false;
+                        resetButton();
+                        return;
                     }
                     
                     const currentText = messageInput.textContent || messageInput.innerText || '';
-                    console.log('SLACK EXTENSION: Current message text:', currentText);
+                    console.log('SLACK EXTENSION: Current message text (raw):', currentText);
                     
-                    if (!currentText.trim()) {
-                        console.log('SLACK EXTENSION: No text to enhance');
-                        return false;
+                    // Clean the text by removing "Message" and anything after it (placeholder text)
+                    const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
+                    console.log('SLACK EXTENSION: Cleaned message text:', cleanedText);
+                    
+                    if (!cleanedText.trim()) {
+                        console.log('SLACK EXTENSION: No text to enhance after cleaning');
+                        resetButton();
+                        return;
                     }
                     
-                    // Disable button and show loading state
-                    const originalText = aiButton.innerHTML;
+                    // Set button to loading state
                     aiButton.innerHTML = '⏳ AI';
                     aiButton.disabled = true;
                     aiButton.style.opacity = '0.6';
@@ -154,7 +172,7 @@ try {
                         console.log('SLACK EXTENSION: About to call enhanceTextWithOpenAI...');
                         
                         // Make OpenAI API call
-                        const enhancedText = await enhanceTextWithOpenAI(currentText);
+                        const enhancedText = await enhanceTextWithOpenAI(cleanedText);
                         
                         console.log('SLACK EXTENSION: enhanceTextWithOpenAI returned:', enhancedText);
                         
@@ -320,16 +338,19 @@ try {
                         
                     } catch (apiError) {
                         console.error('SLACK EXTENSION: OpenAI API error in click handler:', apiError);
-                        // You could show a subtle error indication here
+                        // Reset button on API error
+                        resetButton();
+                        return;
                     }
                     
                 } catch (error) {
                     console.error('SLACK EXTENSION: Error in AI button click handler:', error);
+                    // Reset button on any error
+                    resetButton();
+                    return;
                 } finally {
                     // Restore button state
-                    aiButton.innerHTML = originalText;
-                    aiButton.disabled = false;
-                    aiButton.style.opacity = '1';
+                    resetButton();
                 }
                 
                 return false;
