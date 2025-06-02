@@ -157,10 +157,30 @@ patch_slack() {
     exit 1
   fi
 
+  # Check for OpenAI API key
+  if [ -z "$OPENAI_API_KEY" ]; then
+    echo "WARNING: OPENAI_API_KEY environment variable not set. AI features will not work."
+    echo "INFO: To set it, run: export OPENAI_API_KEY='your-api-key-here'"
+  else
+    echo "INFO: OpenAI API key found in environment"
+  fi
+
   echo "INFO: Inlining custom JS into '$target_bundle_path'..."
   # Add a newline before appending, just in case the original file doesn't end with one
   echo "" >> "$target_bundle_path"
   echo "// === CUSTOM SLACK EXTENSION START === (Added by slack_patcher)" >> "$target_bundle_path"
+  
+  # Inject the OpenAI API key as a global variable
+  if [ -n "$OPENAI_API_KEY" ]; then
+    echo "// Injected OpenAI API Key" >> "$target_bundle_path"
+    echo "window.SLACK_EXTENSION_OPENAI_KEY = '$OPENAI_API_KEY';" >> "$target_bundle_path"
+    echo "console.log('SLACK EXTENSION: OpenAI API key injected');" >> "$target_bundle_path"
+  else
+    echo "// No OpenAI API Key provided" >> "$target_bundle_path"
+    echo "window.SLACK_EXTENSION_OPENAI_KEY = null;" >> "$target_bundle_path"
+    echo "console.log('SLACK EXTENSION: No OpenAI API key - AI features disabled');" >> "$target_bundle_path"
+  fi
+  
   cat "$CUSTOM_JS_SOURCE_PATH" >> "$target_bundle_path"
   echo "" >> "$target_bundle_path"
   echo "// === CUSTOM SLACK EXTENSION END ===" >> "$target_bundle_path"
