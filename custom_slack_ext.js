@@ -500,6 +500,9 @@ try {
             // If it fails, set up a watcher for when the composer appears
             setupComposerWatcher();
         }
+        
+        // Always set up the enhanced monitoring system
+        setupButtonMonitoring();
     }
 
     // Function to set up a watcher for the composer
@@ -520,6 +523,85 @@ try {
                 }
             }
         }, 2000); // Check every 2 seconds
+    }
+
+    // Enhanced monitoring system to keep button alive
+    function setupButtonMonitoring() {
+        console.log('SLACK EXTENSION: Setting up enhanced button monitoring...');
+        
+        // Method 1: MutationObserver to detect DOM changes
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver((mutations) => {
+                let shouldCheck = false;
+                
+                mutations.forEach((mutation) => {
+                    // Check if composer-related elements were added/removed
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType === 1) { // Element node
+                                if (node.classList && (
+                                    node.classList.contains('p-composer') ||
+                                    node.classList.contains('p-composer__body') ||
+                                    node.querySelector && node.querySelector('.p-composer')
+                                )) {
+                                    shouldCheck = true;
+                                }
+                            }
+                        });
+                        
+                        mutation.removedNodes.forEach((node) => {
+                            if (node.nodeType === 1 && node.id === 'slack-ai-button') {
+                                console.log('SLACK EXTENSION: AI button was removed, will re-add');
+                                shouldCheck = true;
+                            }
+                        });
+                    }
+                });
+                
+                if (shouldCheck) {
+                    console.log('SLACK EXTENSION: DOM change detected, checking button...');
+                    setTimeout(() => {
+                        if (!document.getElementById('slack-ai-button')) {
+                            console.log('SLACK EXTENSION: Button missing after DOM change, re-adding...');
+                            tryAddAIButton();
+                        }
+                    }, 500); // Small delay to let DOM settle
+                }
+            });
+            
+            // Start observing
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            console.log('SLACK EXTENSION: MutationObserver set up');
+        }
+        
+        // Method 2: Polling backup (every 3 seconds)
+        setInterval(() => {
+            if (!document.getElementById('slack-ai-button')) {
+                console.log('SLACK EXTENSION: Button missing during poll, re-adding...');
+                tryAddAIButton();
+            }
+        }, 3000);
+        
+        // Method 3: URL change detection (Slack uses pushState for navigation)
+        let lastUrl = window.location.href;
+        setInterval(() => {
+            if (window.location.href !== lastUrl) {
+                console.log('SLACK EXTENSION: URL changed, checking button...');
+                lastUrl = window.location.href;
+                setTimeout(() => {
+                    if (!document.getElementById('slack-ai-button')) {
+                        console.log('SLACK EXTENSION: Button missing after navigation, re-adding...');
+                        tryAddAIButton();
+                    }
+                }, 1000); // Longer delay for navigation
+            }
+        }, 1000);
+        
+        console.log('SLACK EXTENSION: All monitoring methods activated');
     }
 
     // Safe injection approach
