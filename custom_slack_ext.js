@@ -149,12 +149,54 @@ try {
                         return;
                     }
                     
-                    const currentText = messageInput.textContent || messageInput.innerText || '';
+                    // Extract text properly from Quill editor (preserve newlines)
+                    console.log('SLACK EXTENSION: === TEXT EXTRACTION DEBUG ===');
+                    console.log('SLACK EXTENSION: messageInput element:', messageInput);
+                    console.log('SLACK EXTENSION: messageInput.className:', messageInput.className);
+                    console.log('SLACK EXTENSION: messageInput.innerHTML:', messageInput.innerHTML);
+                    console.log('SLACK EXTENSION: messageInput.childNodes.length:', messageInput.childNodes.length);
+                    console.log('SLACK EXTENSION: messageInput children:', Array.from(messageInput.children).map(child => ({
+                        tagName: child.tagName,
+                        className: child.className,
+                        textContent: child.textContent
+                    })));
+                    
+                    let currentText = '';
+                    if (messageInput.classList.contains('ql-editor') || messageInput.classList.contains('ql-container') || messageInput.querySelector('.ql-editor')) {
+                        console.log('SLACK EXTENSION: Detected as Quill editor');
+                        
+                        // Find the actual ql-editor element (might be messageInput itself or a child)
+                        const editorElement = messageInput.classList.contains('ql-editor') ? messageInput : messageInput.querySelector('.ql-editor');
+                        console.log('SLACK EXTENSION: Editor element:', editorElement);
+                        
+                        // Quill editor: each <p> is a line, extract with newlines
+                        const paragraphs = editorElement ? editorElement.querySelectorAll('p') : messageInput.querySelectorAll('p');
+                        console.log('SLACK EXTENSION: Found paragraphs:', paragraphs.length);
+                        paragraphs.forEach((p, index) => {
+                            console.log(`SLACK EXTENSION: Paragraph ${index}:`, p.textContent);
+                        });
+                        
+                        if (paragraphs.length > 0) {
+                            currentText = Array.from(paragraphs)
+                                .map(p => p.textContent || '')
+                                .filter(text => text.trim()) // Remove empty paragraphs
+                                .join('\n');
+                        } else {
+                            console.log('SLACK EXTENSION: No paragraphs found, using fallback');
+                            currentText = messageInput.textContent || messageInput.innerText || '';
+                        }
+                    } else {
+                        console.log('SLACK EXTENSION: Not detected as Quill editor, using regular extraction');
+                        currentText = messageInput.textContent || messageInput.innerText || '';
+                    }
+                    
                     console.log('SLACK EXTENSION: Current message text (raw):', currentText);
+                    console.log('SLACK EXTENSION: Text with newlines (escaped):', JSON.stringify(currentText));
                     
                     // Clean the text by removing "Message" and anything after it (placeholder text)
                     const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
                     console.log('SLACK EXTENSION: Cleaned message text:', cleanedText);
+                    console.log('SLACK EXTENSION: Cleaned text with newlines (escaped):', JSON.stringify(cleanedText));
                     
                     if (!cleanedText.trim()) {
                         console.log('SLACK EXTENSION: No text to enhance after cleaning');
@@ -178,6 +220,11 @@ try {
                         
                         if (enhancedText) {
                             console.log('SLACK EXTENSION: Replacing message content...');
+                            console.log('SLACK EXTENSION: Enhanced text length:', enhancedText.length);
+                            console.log('SLACK EXTENSION: Enhanced text (with escapes):', JSON.stringify(enhancedText));
+                            console.log('SLACK EXTENSION: Contains newlines:', enhancedText.includes('\n'));
+                            console.log('SLACK EXTENSION: Newline count:', (enhancedText.match(/\n/g) || []).length);
+                            
                             console.log('SLACK EXTENSION: messageInput.tagName:', messageInput.tagName);
                             console.log('SLACK EXTENSION: messageInput.contentEditable:', messageInput.contentEditable);
                             console.log('SLACK EXTENSION: messageInput.className:', messageInput.className);
@@ -219,7 +266,16 @@ try {
                                         // Type the enhanced text character by character
                                         for (let i = 0; i < enhancedText.length; i++) {
                                             const char = enhancedText[i];
-                                            document.execCommand('insertText', false, char);
+                                            
+                                            // Handle newlines specially for Quill editor
+                                            if (char === '\n') {
+                                                // Use insertParagraph for proper line breaks in Quill
+                                                document.execCommand('insertParagraph');
+                                                console.log('SLACK EXTENSION: Inserted line break');
+                                            } else {
+                                                // Regular character insertion
+                                                document.execCommand('insertText', false, char);
+                                            }
                                             
                                             // Small delay every 15 characters for realism
                                             if (i % 15 === 0 && i > 0) {
