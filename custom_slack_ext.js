@@ -201,60 +201,34 @@ try {
                                         updateSuccess = true;
                                         console.log('SLACK EXTENSION: Quill setText completed');
                                     } else {
-                                        console.log('SLACK EXTENSION: No Quill instance found, working with ql-editor directly');
+                                        console.log('SLACK EXTENSION: No Quill instance found, using select-all and typing approach');
                                         
                                         // Focus on the editor
                                         messageInput.focus();
                                         messageInput.click();
                                         await new Promise(resolve => setTimeout(resolve, 100));
                                         
-                                        // Find the <p> element inside the ql-editor (where the actual text goes)
-                                        const pElement = messageInput.querySelector('p') || messageInput;
-                                        console.log('SLACK EXTENSION: Found p element:', !!pElement);
-                                        console.log('SLACK EXTENSION: p element content:', pElement.textContent);
+                                        // Select ALL content (works for multi-line)
+                                        document.execCommand('selectAll');
+                                        await new Promise(resolve => setTimeout(resolve, 50));
                                         
-                                        // Clear the content first
-                                        pElement.innerHTML = '';
-                                        pElement.textContent = '';
+                                        // Delete all selected content
+                                        document.execCommand('delete');
+                                        await new Promise(resolve => setTimeout(resolve, 50));
                                         
-                                        // Set the new text
-                                        pElement.textContent = enhancedText;
-                                        
-                                        // Trigger comprehensive events to notify React/Quill
-                                        const events = [
-                                            new Event('input', { bubbles: true, cancelable: true }),
-                                            new Event('change', { bubbles: true, cancelable: true }),
-                                            new Event('keyup', { bubbles: true, cancelable: true }),
-                                            new Event('paste', { bubbles: true, cancelable: true }),
-                                            new Event('textInput', { bubbles: true, cancelable: true }),
-                                            new InputEvent('input', { 
-                                                bubbles: true, 
-                                                cancelable: true,
-                                                inputType: 'insertText',
-                                                data: enhancedText
-                                            })
-                                        ];
-                                        
-                                        // Dispatch events on both the p element and the main editor
-                                        events.forEach(event => {
-                                            pElement.dispatchEvent(event);
-                                            messageInput.dispatchEvent(event);
-                                        });
-                                        
-                                        // Set cursor to end
-                                        try {
-                                            const range = document.createRange();
-                                            const selection = window.getSelection();
-                                            range.selectNodeContents(pElement);
-                                            range.collapse(false);
-                                            selection.removeAllRanges();
-                                            selection.addRange(range);
-                                        } catch (rangeError) {
-                                            console.log('SLACK EXTENSION: Could not set cursor position:', rangeError);
+                                        // Type the enhanced text character by character
+                                        for (let i = 0; i < enhancedText.length; i++) {
+                                            const char = enhancedText[i];
+                                            document.execCommand('insertText', false, char);
+                                            
+                                            // Small delay every 15 characters for realism
+                                            if (i % 15 === 0 && i > 0) {
+                                                await new Promise(resolve => setTimeout(resolve, 5));
+                                            }
                                         }
                                         
                                         updateSuccess = true;
-                                        console.log('SLACK EXTENSION: Quill direct manipulation completed');
+                                        console.log('SLACK EXTENSION: Character typing completed for multi-line content');
                                     }
                                 } catch (error) {
                                     console.error('SLACK EXTENSION: Quill approach failed:', error);
