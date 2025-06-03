@@ -122,6 +122,164 @@ try {
         }
     }
 
+    // Function to summarize text using OpenAI API
+    async function summarizeWithOpenAI(text) {
+        try {
+            const apiKey = getOpenAIKey();
+            if (!apiKey) {
+                throw new Error('No OpenAI API key found. Please set your API key using Ctrl+Alt+A.');
+            }
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are a helpful assistant that summarizes Slack messages. Provide a concise, clear summary that captures the key points. Use proper formatting with line breaks where appropriate. (if the message is in hebrew so write it in hebrew)'
+                        },
+                        {
+                            role: 'user',
+                            content: `Please summarize this Slack message:\n\n${text}`
+                        }
+                    ],
+                    max_tokens: 200,
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            const summary = data.choices?.[0]?.message?.content?.trim();
+            
+            if (!summary) {
+                throw new Error('No summary generated');
+            }
+
+            return summary;
+
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error summarizing with OpenAI:', error);
+            throw error;
+        }
+    }
+
+    // Function to display summary under a message
+    function displaySummaryUnderMessage(messageElement, summary) {
+        try {
+            // Remove any existing summary for this message
+            const existingSummary = messageElement.querySelector('.slack-ai-summary');
+            if (existingSummary) {
+                existingSummary.remove();
+            }
+
+            // Create summary container
+            const summaryContainer = document.createElement('div');
+            summaryContainer.className = 'slack-ai-summary';
+            summaryContainer.style.cssText = `
+                margin: 8px 16px 8px 52px !important;
+                padding: 12px !important;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+                border: 1px solid #dee2e6 !important;
+                border-radius: 8px !important;
+                font-size: 13px !important;
+                line-height: 1.4 !important;
+                color: #495057 !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                position: relative !important;
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+            `;
+
+            // Add summary header with AI icon
+            const summaryHeader = document.createElement('div');
+            summaryHeader.style.cssText = `
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                margin-bottom: 8px !important;
+                font-weight: 600 !important;
+                color: #6c757d !important;
+                font-size: 12px !important;
+            `;
+            summaryHeader.innerHTML = '🤖 AI Summary';
+
+            // Add the summary text with proper line break handling
+            const summaryText = document.createElement('div');
+            summaryText.style.cssText = `
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+                line-height: 1.5 !important;
+            `;
+            summaryText.textContent = summary;
+
+            // Add close button
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '×';
+            closeButton.style.cssText = `
+                position: absolute !important;
+                top: 8px !important;
+                right: 8px !important;
+                background: none !important;
+                border: none !important;
+                font-size: 16px !important;
+                cursor: pointer !important;
+                color: #6c757d !important;
+                padding: 0 !important;
+                width: 20px !important;
+                height: 20px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 50% !important;
+                opacity: 0.7 !important;
+                transition: all 0.2s ease !important;
+            `;
+
+            closeButton.addEventListener('click', function() {
+                summaryContainer.remove();
+            });
+
+            closeButton.addEventListener('mouseenter', function() {
+                closeButton.style.backgroundColor = '#e9ecef';
+                closeButton.style.opacity = '1';
+            });
+
+            closeButton.addEventListener('mouseleave', function() {
+                closeButton.style.backgroundColor = 'transparent';
+                closeButton.style.opacity = '0.7';
+            });
+
+            // Assemble the summary
+            summaryContainer.appendChild(summaryHeader);
+            summaryContainer.appendChild(summaryText);
+            summaryContainer.appendChild(closeButton);
+
+            // Insert the summary after the message
+            messageElement.appendChild(summaryContainer);
+
+            // Smooth scroll to show the summary
+            setTimeout(() => {
+                summaryContainer.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'nearest' 
+                });
+            }, 100);
+
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error displaying summary:', error);
+        }
+    }
+
     // Function to monitor for message action containers
     function setupMessageActionsMonitoring() {
         // First, check for any existing message action containers

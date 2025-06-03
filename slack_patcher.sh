@@ -7,7 +7,21 @@
 #   ./slack_patcher.sh restore - Restores Slack from backup.
 
 # --- Configuration ---
-SLACK_APP_ASAR_PATH="/usr/lib/slack/resources/app.asar"
+# Detect OS and set appropriate Slack path
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    SLACK_APP_ASAR_PATH="/Applications/Slack.app/Contents/Resources/app.asar"
+    echo "INFO: Detected macOS - using path: $SLACK_APP_ASAR_PATH"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    SLACK_APP_ASAR_PATH="/usr/lib/slack/resources/app.asar"
+    echo "INFO: Detected Linux - using path: $SLACK_APP_ASAR_PATH"
+else
+    echo "ERROR: Unsupported operating system: $OSTYPE"
+    echo "This script supports macOS and Linux only."
+    exit 1
+fi
+
 WORKSPACE_DIR="$(pwd)" # Assumes script is run from its own directory
 
 BACKUP_DIR="${WORKSPACE_DIR}/slack_backup"
@@ -17,6 +31,17 @@ CUSTOM_JS_SOURCE_PATH="${WORKSPACE_DIR}/${CUSTOM_JS_FILENAME}"
 MODIFIED_ASAR_TEMP_NAME="app.asar.modified" # Temporary name for the repacked asar
 
 # --- Helper Functions ---
+get_md5_checksum() {
+  local file_path="$1"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS uses md5 command
+    md5 -r "$file_path" | awk '{print $1}'
+  else
+    # Linux uses md5sum command
+    md5sum "$file_path" | awk '{print $1}'
+  fi
+}
+
 ensure_dir_exists() {
   if [ ! -d "$1" ]; then
     mkdir -p "$1" || { echo "ERROR: Could not create directory $1. Aborting."; exit 1; }
@@ -72,9 +97,9 @@ backup_asar() {
   else
     # Compare checksums to see if Slack was updated
     local live_checksum
-    live_checksum=$(md5sum "$SLACK_APP_ASAR_PATH" | awk '{print $1}')
+    live_checksum=$(get_md5_checksum "$SLACK_APP_ASAR_PATH")
     local backup_checksum
-    backup_checksum=$(md5sum "$backup_file_path" | awk '{print $1}')
+    backup_checksum=$(get_md5_checksum "$backup_file_path")
 
     if [ "$live_checksum" != "$backup_checksum" ]; then
       echo "INFO: Slack app.asar has changed (likely updated). Creating new backup."
@@ -254,13 +279,22 @@ if [ -z "$1" ] || ( [ "$1" != "patch" ] && [ "$1" != "restore" ] ); then
   exit 1
 fi
 
-# Check for md5sum utility
-if ! command -v md5sum &> /dev/null; then
-    echo "ERROR: 'md5sum' command not found. This script uses it to check for Slack updates."
-    echo "Please install 'md5sum' (usually part of 'coreutils' package)."
-    exit 1
+# Check for checksum utility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS - check for md5 command
+    if ! command -v md5 &> /dev/null; then
+        echo "ERROR: 'md5' command not found. This script uses it to check for Slack updates."
+        echo "The md5 command should be available by default on macOS."
+        exit 1
+    fi
+else
+    # Linux - check for md5sum command
+    if ! command -v md5sum &> /dev/null; then
+        echo "ERROR: 'md5sum' command not found. This script uses it to check for Slack updates."
+        echo "Please install 'md5sum' (usually part of 'coreutils' package)."
+        exit 1
+    fi
 fi
-
 
 if [ "$1" = "patch" ]; then
   patch_slack
