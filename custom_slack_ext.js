@@ -194,7 +194,7 @@ try {
                     console.log('SLACK EXTENSION: Text with newlines (escaped):', JSON.stringify(currentText));
                     
                     // Clean the text by removing "Message" and anything after it (placeholder text)
-                    const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
+                    const cleanedText = currentText.replace(/\s*Message\s+[.](0,10)$/i, '').trim();
                     console.log('SLACK EXTENSION: Cleaned message text:', cleanedText);
                     console.log('SLACK EXTENSION: Cleaned text with newlines (escaped):', JSON.stringify(cleanedText));
                     
