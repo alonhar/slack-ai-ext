@@ -407,7 +407,7 @@ try {
                     messages: [
                         {
                             role: 'user',
-                            content: `make this better (write only the text.. without any introduction)\n\n${text}`
+                            content: `This is a slack message, please correct my mistakes and keep the way I wrote it but improve it(write only the text.. without any introduction)\n\n${text}`
                         }
                     ],
                     max_tokens: 500,
