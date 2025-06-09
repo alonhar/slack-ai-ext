@@ -753,7 +753,7 @@ try {
     // Function to set up a watcher for the composer
     function setupComposerWatcher() {
         let attempts = 0;
-        const maxAttempts = 20;
+        const maxAttempts = 40;
         
         const watcherInterval = setInterval(() => {
             attempts++;
@@ -765,7 +765,7 @@ try {
                     console.log('SLACK EXTENSION: Max attempts reached for AI button');
                 }
             }
-        }, 2000); // Check every 2 seconds
+        }, 200); // Check every 0.5 seconds
     }
 
     // Enhanced monitoring system to keep button alive
@@ -820,7 +820,7 @@ try {
             if (!document.getElementById('slack-ai-button')) {
                 tryAddAIButton();
             }
-        }, 3000);
+        }, 1000);
         
         // Method 3: URL change detection (Slack uses pushState for navigation)
         let lastUrl = window.location.href;
