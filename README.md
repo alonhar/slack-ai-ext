@@ -11,6 +11,7 @@ A powerful Slack desktop extension that adds **AI summarization** and **message 
 - **🔐 Secure API Key Management**: Store your OpenAI API key securely in your browser's localStorage
 - **⌨️ Keyboard Shortcuts**: Quick access to settings and features
 - **🌍 Cross-Platform**: Works on both Linux and macOS
+![image](https://github.com/user-attachments/assets/a2a96bbb-62a3-429e-a44b-89cd3aa1c95a)
 
 ## 📋 Prerequisites
 
