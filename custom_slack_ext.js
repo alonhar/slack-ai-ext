@@ -415,11 +415,37 @@ try {
 
             const improveButton = document.createElement('button');
             improveButton.innerHTML = '📝 Improve Writing';
+            improveButton.dataset.action = 'improve';
             improveButton.style.cssText = `display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border: none; background: none; text-align: left; cursor: pointer; font-size: 14px;`;
             
             const translateButton = document.createElement('button');
             translateButton.innerHTML = '🌐 Translate to English';
+            translateButton.dataset.action = 'translate';
             translateButton.style.cssText = improveButton.style.cssText;
+
+            // --- New Buttons ---
+            const fixButton = document.createElement('button');
+            fixButton.innerHTML = '🔧 Fix Spelling & Grammar';
+            fixButton.dataset.action = 'fix';
+            fixButton.style.cssText = improveButton.style.cssText;
+
+            const professionalButton = document.createElement('button');
+            professionalButton.innerHTML = '👔 Make Professional';
+            professionalButton.dataset.action = 'professional';
+            professionalButton.style.cssText = improveButton.style.cssText;
+
+            const casualButton = document.createElement('button');
+            casualButton.innerHTML = '😊 Make Casual';
+            casualButton.dataset.action = 'casual';
+            casualButton.style.cssText = improveButton.style.cssText;
+
+            const shortenButton = document.createElement('button');
+            shortenButton.innerHTML = '✂️ Make Shorter';
+            shortenButton.dataset.action = 'shorten';
+            shortenButton.style.cssText = improveButton.style.cssText;
+            
+            const separator = document.createElement('div');
+            separator.style.cssText = 'height: 1px; background-color: #eee; margin: 4px 0;';
 
             const setHoverEffect = btn => {
                 btn.onmouseover = () => btn.style.backgroundColor = '#f8f8f8';
@@ -427,40 +453,83 @@ try {
             };
             setHoverEffect(improveButton);
             setHoverEffect(translateButton);
+            setHoverEffect(fixButton);
+            setHoverEffect(professionalButton);
+            setHoverEffect(casualButton);
+            setHoverEffect(shortenButton);
             
             menu.appendChild(improveButton);
             menu.appendChild(translateButton);
+            menu.appendChild(separator);
+            menu.appendChild(fixButton);
+            menu.appendChild(professionalButton);
+            menu.appendChild(casualButton);
+            menu.appendChild(shortenButton);
 
-            // --- Create Main AI Button (which now acts as a toggle) ---
-            const aiButton = document.createElement('button');
-            aiButton.id = 'slack-ai-button';
-            // Use spans for better control over layout
-            aiButton.innerHTML = `
-                <span style="font-size: 14px;">✨</span>
-                <span style="margin: 0 4px;">AI</span>
-                <span style="font-size: 10px;">▾</span>
-            `;
-            aiButton.title = 'AI Text Tools';
-            aiButton.setAttribute('type', 'button');
-            aiButton.style.cssText = `
-                background: #007a5a !important; color: white !important; border: none !important;
-                border-radius: 4px !important; padding: 6px 10px !important; margin-left: 8px !important;
-                font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important;
-                transition: background-color 0.2s ease !important; display: inline-flex !important;
-                align-items: center !important; gap: 2px !important;
+            // --- Create Main AI Button (which is now a segmented control) ---
+            const aiButtonContainer = document.createElement('div');
+            aiButtonContainer.id = 'slack-ai-button-container';
+            aiButtonContainer.style.cssText = `
+                display: inline-flex !important;
+                align-items: center !important;
+                margin-left: 8px !important;
+                margin-top: 2px !important;
+                border-radius: 4px !important;
+                background: #007a5a !important;
+                font-size: 13px !important;
+                font-weight: 600 !important;
+                border: 1px solid #005c40;
+                box-shadow: 0 1px 1px rgba(0,0,0,0.05);
             `;
 
-            aiButton.addEventListener('mouseenter', () => aiButton.style.backgroundColor = '#005c40 !important');
-            aiButton.addEventListener('mouseleave', () => aiButton.style.backgroundColor = '#007a5a !important');
+            // Part 1: The "Improve" action button
+            const actionPart = document.createElement('button');
+            // Use spans to ensure icon and text are treated as separate flex items, preventing vertical stacking.
+            actionPart.innerHTML = '<span style="font-size: 13px; line-height: 1;">✨</span><span style="line-height: 1;">AI</span>';
+            actionPart.title = 'Improve Writing';
+            actionPart.setAttribute('type', 'button');
+            actionPart.style.cssText = `
+                background: none !important; color: white !important; border: none !important;
+                padding: 6px 10px !important; cursor: pointer !important; display: inline-flex !important;
+                align-items: center !important; gap: 4px !important;
+                border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+                transition: background-color 0.2s ease !important;
+                font-size: 12px !important; font-weight: 600 !important;
+            `;
+
+            // Part 2: The menu toggle button
+            const menuPart = document.createElement('button');
+            menuPart.innerHTML = '▾';
+            menuPart.title = 'More AI Tools';
+            menuPart.setAttribute('type', 'button');
+            menuPart.style.cssText = `
+                background: none !important; color: white !important; border: none !important;
+                padding: 6px 8px !important; cursor: pointer !important;
+                transition: background-color 0.2s ease !important; font-size: 10px;
+                display: flex !important; align-items: center !important;
+            `;
+
+            // Hover effects for the two parts
+            actionPart.addEventListener('mouseenter', () => actionPart.style.backgroundColor = 'rgba(0,0,0,0.15) !important');
+            actionPart.addEventListener('mouseleave', () => actionPart.style.backgroundColor = 'transparent !important');
+            menuPart.addEventListener('mouseenter', () => menuPart.style.backgroundColor = 'rgba(0,0,0,0.15) !important');
+            menuPart.addEventListener('mouseleave', () => menuPart.style.backgroundColor = 'transparent !important');
             
+            aiButtonContainer.appendChild(actionPart);
+            aiButtonContainer.appendChild(menuPart);
+
             const container = document.createElement('div');
             container.className = 'slack-ai-composer-container';
             container.style.position = 'relative';
-            container.appendChild(aiButton);
+            container.appendChild(aiButtonContainer);
             container.appendChild(menu);
 
-            // --- Event Listeners to show/hide menu ---
-            aiButton.addEventListener('click', (e) => {
+            // --- Event Listeners ---
+            // Click "AI" part to improve text
+            actionPart.addEventListener('click', () => handleAIAction('improve'));
+            
+            // Click "▾" part to show/hide menu
+            menuPart.addEventListener('click', (e) => {
                 e.stopPropagation();
                 menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             });
@@ -469,52 +538,89 @@ try {
                 if (menu.style.display === 'block') menu.style.display = 'none';
             });
 
-            // The actual logic will be added in the next step.
-            // For now, the buttons in the menu will just close the menu.
             const handleAIAction = async (mode) => {
                 menu.style.display = 'none'; // Close menu on action
-                const originalTextHTML = aiButton.innerHTML;
-                aiButton.innerHTML = '⏳';
-                aiButton.disabled = true;
+                const originalActionHTML = actionPart.innerHTML;
+                actionPart.innerHTML = '⏳';
+                actionPart.disabled = true;
+                menuPart.disabled = true;
 
                 try {
                     const messageInput = document.querySelector('[data-qa="message_input"]') || document.querySelector('.ql-editor') || document.querySelector('[contenteditable="true"]');
                     if (!messageInput) throw new Error("Could not find message input");
 
                     let currentText = '';
-                    if (messageInput.classList.contains('ql-editor')) {
-                        const paragraphs = messageInput.querySelectorAll('p');
-                        currentText = Array.from(paragraphs).map(p => p.textContent || '').join('\n');
+                    // Use the more robust logic you provided to correctly find the editor and its content.
+                    if (messageInput.classList.contains('ql-editor') || messageInput.classList.contains('ql-container') || messageInput.querySelector('.ql-editor')) {
+                        // Find the actual ql-editor element, which might be the input itself or a child.
+                        const editorElement = messageInput.classList.contains('ql-editor') ? messageInput : messageInput.querySelector('.ql-editor');
+                        
+                        const paragraphs = editorElement ? editorElement.querySelectorAll('p') : [];
+                        
+                        if (paragraphs.length > 0) {
+                            // Each <p> tag represents a line. We join them with newlines.
+                            // I have removed the .filter() from the old code to ensure empty lines are preserved.
+                            currentText = Array.from(paragraphs)
+                                .map(p => p.textContent || '')
+                                .join('\n');
+                        } else {
+                            // Fallback for single-line messages or other structures within the editor.
+                            currentText = editorElement ? editorElement.innerText : messageInput.innerText;
+                        }
                     } else {
-                        currentText = messageInput.textContent || '';
+                        // Final fallback for non-Quill editors.
+                        currentText = messageInput.innerText || messageInput.textContent || '';
                     }
 
-                    // Restore the regex to clean the text properly
+                    // Clean the placeholder text from the extracted content.
                     const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
                     if (!cleanedText) throw new Error("Input is empty");
                     
                     const enhancedText = await enhanceTextWithOpenAI(cleanedText, mode);
                     if (!enhancedText) throw new Error("No text returned from AI");
                     
-                    messageInput.focus();
-                    document.execCommand('selectAll', false, null);
-                    await new Promise(r => setTimeout(r, 50));
-                    document.execCommand('insertText', false, enhancedText);
+                    // Use a more robust text replacement method that handles rich text (like @mentions)
+                    const editor = messageInput.closest('.ql-editor');
+                    if (editor && typeof window.Quill !== 'undefined') {
+                        const quill = window.Quill.find(editor);
+                        if (quill) {
+                            // Using Quill's API is the most reliable way
+                            quill.setText(enhancedText + '\n'); // Use setText to replace content
+                            quill.setSelection(quill.getLength(), 0); // Move cursor to the end
+                        } else {
+                            // Fallback if Quill instance not found, but editor exists
+                            editor.focus();
+                            document.execCommand('selectAll', false, null);
+                            await new Promise(r => setTimeout(r, 50));
+                            document.execCommand('insertText', false, enhancedText);
+                        }
+                    } else {
+                         // Fallback for older or different editor structures
+                        messageInput.focus();
+                        document.execCommand('selectAll', false, null);
+                        await new Promise(r => setTimeout(r, 50));
+                        document.execCommand('insertText', false, enhancedText);
+                    }
                     
-                    aiButton.innerHTML = '✅';
+                    actionPart.innerHTML = '✅';
                 } catch (error) {
                     console.error('SLACK EXTENSION: AI Action Error:', error);
-                    aiButton.innerHTML = '❌';
+                    actionPart.innerHTML = '❌';
                 } finally {
                     setTimeout(() => {
-                        aiButton.innerHTML = originalTextHTML;
-                        aiButton.disabled = false;
+                        actionPart.innerHTML = originalActionHTML;
+                        actionPart.disabled = false;
+                        menuPart.disabled = false;
                     }, 2000);
                 }
             };
             
             improveButton.addEventListener('click', () => handleAIAction('improve'));
             translateButton.addEventListener('click', () => handleAIAction('translate'));
+            fixButton.addEventListener('click', () => handleAIAction('fix'));
+            professionalButton.addEventListener('click', () => handleAIAction('professional'));
+            casualButton.addEventListener('click', () => handleAIAction('casual'));
+            shortenButton.addEventListener('click', () => handleAIAction('shorten'));
             
             // Find the best place to insert the button
             const actionButtons = composerBody.querySelector('.p-composer__actions') || composerBody;
@@ -537,9 +643,19 @@ try {
         let userPrompt;
         if (mode === 'translate') {
             userPrompt = `Translate the following text to English. Return ONLY the translated text, without any additional comments or introductions or formatting.\n\n${text}`;
+        } else if (mode === 'fix') {
+            userPrompt = `Fix all spelling and grammar mistakes in the following text. Do not change the tone or meaning. Return only the corrected text.\n\n${text}`;
+        } else if (mode === 'professional') {
+            userPrompt = `Rewrite the following text to have a more professional and formal tone. Return only the rewritten text.\n\n${text}`;
+        } else if (mode === 'casual') {
+            userPrompt = `Rewrite the following text to have a more casual and friendly tone. Return only the rewritten text.\n\n${text}`;
+        } else if (mode === 'shorten') {
+            userPrompt = `Make the following text more concise and to the point. Remove any unnecessary words or sentences. Return only the shortened text.\n\n${text}`;
         } else { // default to 'improve'
             userPrompt = `This is a slack message, please correct my mistakes and keep the way I wrote it but improve it(write only the text.. without any introduction)\n\n${text}`;
         }
+
+        console.log(`SLACK EXTENSION: Sending to OpenAI (mode: ${mode}):`, JSON.stringify({ prompt: userPrompt }, null, 2));
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -567,6 +683,8 @@ try {
 
         const data = await response.json();
         const enhancedText = data.choices?.[0]?.message?.content?.trim();
+        
+        console.log("SLACK EXTENSION: Received from OpenAI:", JSON.stringify({ enhancedText, fullResponse: data }, null, 2));
         
         if (!enhancedText) {
             throw new Error('Invalid response format from OpenAI');
