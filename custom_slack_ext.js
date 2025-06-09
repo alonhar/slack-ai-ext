@@ -141,7 +141,7 @@ try {
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are a helpful assistant that summarizes Slack messages. Provide a concise, clear summary that captures the key points. Use proper formatting with line breaks where appropriate. (if the message is in hebrew so write it in hebrew)'
+                            content: 'You are a helpful assistant that summarizes Slack messages. Provide a concise, clear summary that captures the key points. Use proper formatting with line breaks where appropriate and bullet points where appropriates. (if the message is in hebrew so write it in hebrew)'
                         },
                         {
                             role: 'user',
