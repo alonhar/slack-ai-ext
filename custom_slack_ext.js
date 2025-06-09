@@ -396,380 +396,183 @@ try {
     function addAIButton() {
         try {
             // Check if button already exists
-            if (document.getElementById('slack-ai-button')) {
+            if (document.querySelector('.slack-ai-composer-container')) {
                 return true;
             }
 
             // Find the composer body container
             const composerBody = document.querySelector('.p-composer__body');
-            if (!composerBody) {
-                return false;
-            }
+            if (!composerBody) return false;
 
-            // Create the AI button
-            const aiButton = document.createElement('button');
-            aiButton.id = 'slack-ai-button';
-            aiButton.type = 'button';
-            aiButton.innerHTML = '✨ AI';
-            aiButton.title = 'Enhance message with AI';
-            
-            // Explicitly prevent any form-related behavior
-            aiButton.setAttribute('type', 'button');
-            aiButton.setAttribute('role', 'button');
-            aiButton.setAttribute('tabindex', '0');
-
-            // Style the button to match Slack's design
-            aiButton.style.cssText = `
-                background: #007a5a !important;
-                color: white !important;
-                border: none !important;
-                border-radius: 4px !important;
-                padding: 6px 12px !important;
-                margin-left: 8px !important;
-                font-size: 13px !important;
-                font-weight: 600 !important;
-                cursor: pointer !important;
-                transition: background-color 0.2s ease !important;
-                z-index: 1000 !important;
-                position: relative !important;
-                display: inline-flex !important;
-                align-items: center !important;
-                gap: 4px !important;
+            // --- Create Menu ---
+            const menu = document.createElement('div');
+            menu.className = 'slack-ai-composer-menu';
+            menu.style.cssText = `
+                display: none; position: absolute; bottom: 35px; right: 0;
+                background-color: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border: 1px solid #ddd; z-index: 1001; overflow: hidden; width: 200px;
             `;
 
-            // Add hover effect
-            aiButton.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = '#005c40 !important';
+            const improveButton = document.createElement('button');
+            improveButton.innerHTML = '📝 Improve Writing';
+            improveButton.style.cssText = `display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border: none; background: none; text-align: left; cursor: pointer; font-size: 14px;`;
+            
+            const translateButton = document.createElement('button');
+            translateButton.innerHTML = '🌐 Translate to English';
+            translateButton.style.cssText = improveButton.style.cssText;
+
+            const setHoverEffect = btn => {
+                btn.onmouseover = () => btn.style.backgroundColor = '#f8f8f8';
+                btn.onmouseout = () => btn.style.backgroundColor = 'transparent';
+            };
+            setHoverEffect(improveButton);
+            setHoverEffect(translateButton);
+            
+            menu.appendChild(improveButton);
+            menu.appendChild(translateButton);
+
+            // --- Create Main AI Button (which now acts as a toggle) ---
+            const aiButton = document.createElement('button');
+            aiButton.id = 'slack-ai-button';
+            // Use spans for better control over layout
+            aiButton.innerHTML = `
+                <span style="font-size: 14px;">✨</span>
+                <span style="margin: 0 4px;">AI</span>
+                <span style="font-size: 10px;">▾</span>
+            `;
+            aiButton.title = 'AI Text Tools';
+            aiButton.setAttribute('type', 'button');
+            aiButton.style.cssText = `
+                background: #007a5a !important; color: white !important; border: none !important;
+                border-radius: 4px !important; padding: 6px 10px !important; margin-left: 8px !important;
+                font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important;
+                transition: background-color 0.2s ease !important; display: inline-flex !important;
+                align-items: center !important; gap: 2px !important;
+            `;
+
+            aiButton.addEventListener('mouseenter', () => aiButton.style.backgroundColor = '#005c40 !important');
+            aiButton.addEventListener('mouseleave', () => aiButton.style.backgroundColor = '#007a5a !important');
+            
+            const container = document.createElement('div');
+            container.className = 'slack-ai-composer-container';
+            container.style.position = 'relative';
+            container.appendChild(aiButton);
+            container.appendChild(menu);
+
+            // --- Event Listeners to show/hide menu ---
+            aiButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             });
             
-            aiButton.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '#007a5a !important';
+            document.addEventListener('click', () => {
+                if (menu.style.display === 'block') menu.style.display = 'none';
             });
 
-            // Add click handler with OpenAI integration
-            aiButton.addEventListener('click', async function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                
-                const originalText = aiButton.innerHTML;
-                const originalDisabled = aiButton.disabled;
-                const originalOpacity = aiButton.style.opacity;
-                
-                // Function to reset button to original state
-                const resetButton = () => {
-                    aiButton.innerHTML = originalText;
-                    aiButton.disabled = originalDisabled;
-                    aiButton.style.opacity = originalOpacity || '1';
-                    console.log('SLACK EXTENSION: Button reset to original state');
-                };
-                
+            // The actual logic will be added in the next step.
+            // For now, the buttons in the menu will just close the menu.
+            const handleAIAction = async (mode) => {
+                menu.style.display = 'none'; // Close menu on action
+                const originalTextHTML = aiButton.innerHTML;
+                aiButton.innerHTML = '⏳';
+                aiButton.disabled = true;
+
                 try {
-                    // Find the message input
-                    const messageInput = document.querySelector('[data-qa="message_input"]') || 
-                                       document.querySelector('.ql-editor') ||
-                                       document.querySelector('[contenteditable="true"]');
-                    
-                    if (!messageInput) {
-                        resetButton();
-                        return;
-                    }
-                    
-                    // Extract text properly from Quill editor (preserve newlines)
-                    console.log('SLACK EXTENSION: === TEXT EXTRACTION DEBUG ===');
-                    console.log('SLACK EXTENSION: messageInput element:', messageInput);
-                    console.log('SLACK EXTENSION: messageInput.className:', messageInput.className);
-                    console.log('SLACK EXTENSION: messageInput.innerHTML:', messageInput.innerHTML);
-                    console.log('SLACK EXTENSION: messageInput.childNodes.length:', messageInput.childNodes.length);
-                    console.log('SLACK EXTENSION: messageInput children:', Array.from(messageInput.children).map(child => ({
-                        tagName: child.tagName,
-                        className: child.className,
-                        textContent: child.textContent
-                    })));
-                    
+                    const messageInput = document.querySelector('[data-qa="message_input"]') || document.querySelector('.ql-editor') || document.querySelector('[contenteditable="true"]');
+                    if (!messageInput) throw new Error("Could not find message input");
+
                     let currentText = '';
-                    if (messageInput.classList.contains('ql-editor') || messageInput.classList.contains('ql-container') || messageInput.querySelector('.ql-editor')) {
-                        // Find the actual ql-editor element (might be messageInput itself or a child)
-                        const editorElement = messageInput.classList.contains('ql-editor') ? messageInput : messageInput.querySelector('.ql-editor');
-                        
-                        // Quill editor: each <p> is a line, extract with newlines
-                        const paragraphs = editorElement ? editorElement.querySelectorAll('p') : messageInput.querySelectorAll('p');
-                        paragraphs.forEach((p, index) => {
-                            console.log(`SLACK EXTENSION: Paragraph ${index}:`, p.textContent);
-                        });
-                        
-                        if (paragraphs.length > 0) {
-                            currentText = Array.from(paragraphs)
-                                .map(p => p.textContent || '')
-                                .filter(text => text.trim()) // Remove empty paragraphs
-                                .join('\n');
-                        } else {
-                            currentText = messageInput.textContent || messageInput.innerText || '';
-                        }
+                    if (messageInput.classList.contains('ql-editor')) {
+                        const paragraphs = messageInput.querySelectorAll('p');
+                        currentText = Array.from(paragraphs).map(p => p.textContent || '').join('\n');
                     } else {
-                        currentText = messageInput.textContent || messageInput.innerText || '';
+                        currentText = messageInput.textContent || '';
                     }
+
+                    // Restore the regex to clean the text properly
+                    const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
+                    if (!cleanedText) throw new Error("Input is empty");
                     
-                    console.log('SLACK EXTENSION: Current message text (raw):', currentText);
-                    console.log('SLACK EXTENSION: Text with newlines (escaped):', JSON.stringify(currentText));
+                    const enhancedText = await enhanceTextWithOpenAI(cleanedText, mode);
+                    if (!enhancedText) throw new Error("No text returned from AI");
                     
-                    // Clean the text by removing "Message" and anything after it (placeholder text)
-                    const cleanedText = currentText.replace(/\s*Message\s+[.](0,10)$/i, '').trim();
-                    console.log('SLACK EXTENSION: Cleaned message text:', cleanedText);
-                    console.log('SLACK EXTENSION: Cleaned text with newlines (escaped):', JSON.stringify(cleanedText));
+                    messageInput.focus();
+                    document.execCommand('selectAll', false, null);
+                    await new Promise(r => setTimeout(r, 50));
+                    document.execCommand('insertText', false, enhancedText);
                     
-                    if (!cleanedText.trim()) {
-                        resetButton();
-                        return;
-                    }
-                    
-                    // Set button to loading state
-                    aiButton.innerHTML = '⏳ AI';
-                    aiButton.disabled = true;
-                    aiButton.style.opacity = '0.6';
-                    console.log('SLACK EXTENSION: Button set to loading state');
-                    
-                    try {
-                        const enhancedText = await enhanceTextWithOpenAI(cleanedText);
-                        
-                        if (enhancedText) {
-                            console.log('SLACK EXTENSION: Replacing message content...');
-                            console.log('SLACK EXTENSION: Enhanced text length:', enhancedText.length);
-                            console.log('SLACK EXTENSION: Enhanced text (with escapes):', JSON.stringify(enhancedText));
-                            console.log('SLACK EXTENSION: Contains newlines:', enhancedText.includes('\n'));
-                            console.log('SLACK EXTENSION: Newline count:', (enhancedText.match(/\n/g) || []).length);
-                            
-                            console.log('SLACK EXTENSION: messageInput.tagName:', messageInput.tagName);
-                            console.log('SLACK EXTENSION: messageInput.contentEditable:', messageInput.contentEditable);
-                            console.log('SLACK EXTENSION: messageInput.className:', messageInput.className);
-                            console.log('SLACK EXTENSION: messageInput type:', typeof messageInput.value);
-                            
-                            // Try multiple approaches to update the message
-                            let updateSuccess = false;
-                            
-                            // Approach 1: Quill Editor Specific (most likely for Slack)
-                            if (messageInput.classList.contains('ql-editor') || messageInput.closest('.ql-container')) {
-                                try {
-                                    // Try to find the Quill instance first
-                                    const quillContainer = messageInput.closest('.ql-container') || messageInput.parentElement;
-                                    const quillInstance = quillContainer?.__quill || window.Quill?.find(quillContainer);
-                                    
-                                    if (quillInstance) {
-                                        console.log('SLACK EXTENSION: Found Quill instance, using setText');
-                                        quillInstance.setText(enhancedText);
-                                        quillInstance.setSelection(enhancedText.length); // Move cursor to end
-                                        updateSuccess = true;
-                                        console.log('SLACK EXTENSION: Quill setText completed');
-                                    } else {
-                                        console.log('SLACK EXTENSION: No Quill instance found, using select-all and typing approach');
-                                        
-                                        // Focus on the editor
-                                        messageInput.focus();
-                                        messageInput.click();
-                                        await new Promise(resolve => setTimeout(resolve, 100));
-                                        
-                                        // Select ALL content (works for multi-line)
-                                        document.execCommand('selectAll');
-                                        await new Promise(resolve => setTimeout(resolve, 50));
-                                        
-                                        // Delete all selected content
-                                        document.execCommand('delete');
-                                        await new Promise(resolve => setTimeout(resolve, 50));
-                                        
-                                        // Type the enhanced text character by character
-                                        for (let i = 0; i < enhancedText.length; i++) {
-                                            const char = enhancedText[i];
-                                            
-                                            // Handle newlines specially for Quill editor
-                                            if (char === '\n') {
-                                                // Use insertParagraph for proper line breaks in Quill
-                                                document.execCommand('insertParagraph');
-                                                console.log('SLACK EXTENSION: Inserted line break');
-                                            } else {
-                                                // Regular character insertion
-                                                document.execCommand('insertText', false, char);
-                                            }
-                                            
-                                            // Small delay every 15 characters for realism
-                                            if (i % 15 === 0 && i > 0) {
-                                                await new Promise(resolve => setTimeout(resolve, 5));
-                                            }
-                                        }
-                                        
-                                        updateSuccess = true;
-                                        console.log('SLACK EXTENSION: Character typing completed for multi-line content');
-                                    }
-                                } catch (error) {
-                                    console.error('SLACK EXTENSION: Quill approach failed:', error);
-                                }
-                            }
-                            
-                            // Approach 2: Simulate actual typing (character by character)
-                            if (!updateSuccess) {
-                                try {
-                                    messageInput.focus();
-                                    messageInput.click();
-                                    await new Promise(resolve => setTimeout(resolve, 100));
-                                    
-                                    // Clear existing content
-                                    document.execCommand('selectAll');
-                                    await new Promise(resolve => setTimeout(resolve, 50));
-                                    document.execCommand('delete');
-                                    await new Promise(resolve => setTimeout(resolve, 50));
-                                    
-                                    // Type each character with realistic timing
-                                    for (let i = 0; i < enhancedText.length; i++) {
-                                        const char = enhancedText[i];
-                                        
-                                        // Use execCommand insertText for each character
-                                        document.execCommand('insertText', false, char);
-                                        
-                                        // Add small delays to make it more realistic
-                                        if (i % 10 === 0 && i > 0) {
-                                            await new Promise(resolve => setTimeout(resolve, 10));
-                                        }
-                                    }
-                                    
-                                    updateSuccess = true;
-                                    console.log('SLACK EXTENSION: Character typing completed');
-                                } catch (error) {
-                                    console.error('SLACK EXTENSION: Character typing failed:', error);
-                                }
-                            }
-                            
-                            // Approach 3: Clipboard fallback
-                            if (!updateSuccess) {
-                                try {
-                                    messageInput.focus();
-                                    messageInput.click();
-                                    await new Promise(resolve => setTimeout(resolve, 100));
-                                    
-                                    // Copy to clipboard
-                                    await navigator.clipboard.writeText(enhancedText);
-                                    
-                                    // Select all and paste
-                                    document.execCommand('selectAll');
-                                    await new Promise(resolve => setTimeout(resolve, 50));
-                                    document.execCommand('paste');
-                                    
-                                    updateSuccess = true;
-                                    console.log('SLACK EXTENSION: Clipboard approach completed');
-                                } catch (error) {
-                                    console.error('SLACK EXTENSION: Clipboard approach failed:', error);
-                                }
-                            }
-                            
-                            if (updateSuccess) {
-                                console.log('SLACK EXTENSION: Text enhanced and replaced successfully');
-                            } else {
-                                console.error('SLACK EXTENSION: All update approaches failed');
-                            }
-                            
-                            // Focus back on the message input
-                            try {
-                                messageInput.focus();
-                                console.log('SLACK EXTENSION: Focused message input');
-                            } catch (focusError) {
-                                console.log('SLACK EXTENSION: Could not focus input:', focusError);
-                            }
-                            
-                        } else {
-                            console.log('SLACK EXTENSION: No enhanced text returned from OpenAI');
-                        }
-                        
-                    } catch (apiError) {
-                        console.error('SLACK EXTENSION: OpenAI API error in click handler:', apiError);
-                        // Reset button on API error
-                        resetButton();
-                        return;
-                    }
-                    
+                    aiButton.innerHTML = '✅';
                 } catch (error) {
-                    console.error('SLACK EXTENSION: Error in AI button click handler:', error);
-                    // Reset button on any error
-                    resetButton();
-                    return;
+                    console.error('SLACK EXTENSION: AI Action Error:', error);
+                    aiButton.innerHTML = '❌';
                 } finally {
-                    // Restore button state
-                    resetButton();
+                    setTimeout(() => {
+                        aiButton.innerHTML = originalTextHTML;
+                        aiButton.disabled = false;
+                    }, 2000);
                 }
-                
-                return false;
-            });
+            };
             
-            // Function to enhance text using OpenAI API
-            async function enhanceTextWithOpenAI(text) {
-                // Get API key from localStorage first, fallback to environment variable
-                const apiKey = getOpenAIKey() || window.SLACK_EXTENSION_OPENAI_KEY;
-                
-                if (!apiKey) {
-                    throw new Error('OpenAI API key not found. Please set it using Ctrl+Alt+A.');
-                }
-                
-                const requestBody = {
-                    model: 'gpt-4o',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: `This is a slack message, please correct my mistakes and keep the way I wrote it but improve it(write only the text.. without any introduction)\n\n${text}`
-                        }
-                    ],
-                    max_tokens: 500,
-                    temperature: 0.7
-                };
-                
-                try {
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`);
-                    }
-                    
-                    const data = await response.json();
-                    const result = data.choices?.[0]?.message?.content?.trim();
-                    
-                    if (result) {
-                        return result;
-                    }
-                    
-                    throw new Error('Invalid response format from OpenAI');
-                    
-                } catch (error) {
-                    console.error('SLACK EXTENSION: === OPENAI CALL FAILED ===');
-                    console.error('SLACK EXTENSION: Error type:', error.constructor.name);
-                    console.error('SLACK EXTENSION: Error message:', error.message);
-                    console.error('SLACK EXTENSION: Full error:', error);
-                    console.error('SLACK EXTENSION: Error stack:', error.stack);
-                    throw error;
-                }
-            }
-
+            improveButton.addEventListener('click', () => handleAIAction('improve'));
+            translateButton.addEventListener('click', () => handleAIAction('translate'));
+            
             // Find the best place to insert the button
-            // Look for existing buttons container or action buttons
-            const actionButtons = composerBody.querySelector('.p-composer__actions') ||
-                                composerBody.querySelector('[data-qa="composer_buttons"]') ||
-                                composerBody.querySelector('.p-composer__action_buttons') ||
-                                composerBody;
-
-            if (actionButtons) {
-                // Append as the last button
-                actionButtons.appendChild(aiButton);
-                return true;
-            } else {
-                return false;
-            }
+            const actionButtons = composerBody.querySelector('.p-composer__actions') || composerBody;
+            actionButtons.appendChild(container);
+            return true;
 
         } catch (error) {
-            console.error('SLACK EXTENSION: Error adding AI button:', error);
+            console.error('SLACK EXTENSION: Error adding AI button UI:', error);
             return false;
         }
+    }
+
+    // UPDATED to accept a mode
+    async function enhanceTextWithOpenAI(text, mode = 'improve') {
+        const apiKey = getOpenAIKey();
+        if (!apiKey) {
+            throw new Error('OpenAI API key not found. Please set it using Ctrl+Alt+A.');
+        }
+
+        let userPrompt;
+        if (mode === 'translate') {
+            userPrompt = `Translate the following text to English. Return ONLY the translated text, without any additional comments or introductions or formatting.\n\n${text}`;
+        } else { // default to 'improve'
+            userPrompt = `This is a slack message, please correct my mistakes and keep the way I wrote it but improve it(write only the text.. without any introduction)\n\n${text}`;
+        }
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ],
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const enhancedText = data.choices?.[0]?.message?.content?.trim();
+        
+        if (!enhancedText) {
+            throw new Error('Invalid response format from OpenAI');
+        }
+
+        return enhancedText;
     }
 
     // Function to try adding banner safely
