@@ -131,6 +131,12 @@ patch_slack() {
     exit 1
   fi
   echo "INFO: Found custom JS file: '$CUSTOM_JS_SOURCE_PATH'"
+  
+  # Check for integrity script
+  if [ ! -f "${WORKSPACE_DIR}/integrity.js" ]; then
+    echo "ERROR: Integrity calculation script not found at '${WORKSPACE_DIR}/integrity.js'"
+    exit 1
+  fi
 
   # 2. Check asar availability
   check_asar_availability
@@ -138,14 +144,26 @@ patch_slack() {
   # 3. Perform backup (also checks if SLACK_APP_ASAR_PATH exists)
   backup_asar
 
-  # 4. Clean up old temp directory if it exists and create new one
+  # 4. Calculate original checksum for macOS
+  local old_checksum=""
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "INFO: [macOS] Calculating original asar integrity..."
+    old_checksum=$(node "${WORKSPACE_DIR}/integrity.js" "$SLACK_APP_ASAR_PATH")
+    if [ -z "$old_checksum" ]; then
+        echo "ERROR: [macOS] Failed to calculate old checksum. Aborting."
+        exit 1
+    fi
+    echo "INFO: [macOS] Original checksum: $old_checksum"
+  fi
+
+  # 5. Clean up old temp directory if it exists and create new one
   if [ -d "$TEMP_EXTRACT_DIR" ]; then
     echo "INFO: Removing old temporary extraction directory: '$TEMP_EXTRACT_DIR'"
     rm -rf "$TEMP_EXTRACT_DIR"
   fi
   ensure_dir_exists "$TEMP_EXTRACT_DIR"
 
-  # 5. Extract app.asar
+  # 6. Extract app.asar
   echo "INFO: Extracting '$SLACK_APP_ASAR_PATH' to '$TEMP_EXTRACT_DIR'..."
   if ! npx asar extract "$SLACK_APP_ASAR_PATH" "$TEMP_EXTRACT_DIR"; then
     echo "ERROR: Failed to extract app.asar using npx. Aborting."
@@ -154,7 +172,7 @@ patch_slack() {
   fi
   echo "INFO: Extraction complete."
 
-  # 6. Define paths for injection - target preload bundle that runs in renderer context
+  # 7. Define paths for injection - target preload bundle that runs in renderer context
   local extracted_dist_path="${TEMP_EXTRACT_DIR}/dist"
   local target_bundle_name="preload.bundle.js" # Target preload that has some DOM access
   local target_bundle_path="${extracted_dist_path}/${target_bundle_name}"
@@ -174,7 +192,7 @@ patch_slack() {
   fi
   echo "INFO: Found target bundle: '$target_bundle_path'"
 
-  # 7. Copy custom JS and inject into target bundle
+  # 8. Copy custom JS and inject into target bundle
   echo "INFO: Reading custom JS file '$CUSTOM_JS_SOURCE_PATH'..."
   if [ ! -f "$CUSTOM_JS_SOURCE_PATH" ]; then
     echo "ERROR: Failed to find custom JS file. Aborting."
@@ -211,7 +229,7 @@ patch_slack() {
   echo "// === CUSTOM SLACK EXTENSION END ===" >> "$target_bundle_path"
   echo "INFO: Injection attempt complete."
 
-  # 8. Repack
+  # 9. Repack
   local modified_asar_output_path="${WORKSPACE_DIR}/${MODIFIED_ASAR_TEMP_NAME}"
   if [ -f "$modified_asar_output_path" ]; then
       echo "INFO: Removing old repacked asar: '$modified_asar_output_path'"
@@ -225,7 +243,7 @@ patch_slack() {
   fi
   echo "INFO: Packing complete: '$modified_asar_output_path'"
 
-  # 9. Apply
+  # 10. Apply
   request_sudo_privileges
   echo "INFO: Replacing live Slack app.asar with modified version..."
   if ! sudo cp "$modified_asar_output_path" "$SLACK_APP_ASAR_PATH"; then
@@ -234,9 +252,52 @@ patch_slack() {
     rm -rf "$TEMP_EXTRACT_DIR"    # Clean up extracted dir on error
     exit 1
   fi
-  echo "SUCCESS: Patch applied successfully! Restart Slack to see changes."
+  echo "SUCCESS: Patch applied successfully!"
 
-  # 10. Cleanup
+  # NEW STEP: Update macOS plist checksums
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    if [ -z "$old_checksum" ]; then
+        echo "WARNING: [macOS] Old checksum was not calculated, skipping Info.plist update."
+    else
+        echo "INFO: [macOS] Calculating new asar integrity..."
+        local new_checksum
+        new_checksum=$(node "${WORKSPACE_DIR}/integrity.js" "$SLACK_APP_ASAR_PATH")
+        if [ -z "$new_checksum" ]; then
+            echo "ERROR: [macOS] Failed to calculate new checksum. Aborting."
+            exit 1
+        fi
+        echo "INFO: [macOS] New checksum: $new_checksum"
+
+        if [ "$old_checksum" == "$new_checksum" ]; then
+            echo "INFO: [macOS] Checksums are identical. No Info.plist update needed."
+        else
+            local slack_contents_dir
+            slack_contents_dir=$(dirname "$(dirname "$SLACK_APP_ASAR_PATH")")
+            
+            echo "INFO: [macOS] Searching for and replacing checksum in Info.plist files..."
+            
+            local file_list
+            # Need sudo to grep in system directories, redirect stderr to hide permission errors for files we can't access anyway
+            file_list=$(sudo grep -r -l "$old_checksum" "$slack_contents_dir" 2>/dev/null)
+
+            if [ -n "$file_list" ]; then
+                echo "INFO: [macOS] Found files to update:"
+                echo "$file_list" | while IFS= read -r file; do
+                  echo "  - $file"
+                done
+
+                # Use xargs to pass file list to sed for replacement
+                echo "$file_list" | sudo xargs -I{} sed -i '' "s|${old_checksum}|${new_checksum}|g" {}
+                echo "INFO: [macOS] Info.plist checksum update complete."
+            else
+                echo "WARNING: [macOS] No Info.plist files found containing the old checksum. The application might not launch correctly."
+            fi
+        fi
+    fi
+  fi
+  echo "INFO: Restart Slack to see changes."
+
+  # 11. Cleanup
   echo "INFO: Cleaning up temporary files..."
   rm -f "$modified_asar_output_path"
   rm -rf "$TEMP_EXTRACT_DIR"
