@@ -518,6 +518,12 @@ try {
             aiButtonContainer.appendChild(actionPart);
             aiButtonContainer.appendChild(menuPart);
 
+            // Add right-click handler to open API key settings
+            aiButtonContainer.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showAPIKeyOverlay();
+            });
+
             const container = document.createElement('div');
             container.className = 'slack-ai-composer-container';
             container.style.position = 'relative';
