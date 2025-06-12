@@ -1,0 +1,87 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Development Patterns and Best Practices
+
+Key patterns and practices for developing the Slack AI extension based on project history.
+
+## Code Organization Patterns
+
+### Feature Implementation Approach
+1. **UI First, Then Functionality** - Build visual components before adding behavior
+2. **Incremental Development** - Add features step-by-step to avoid breaking existing functionality
+3. **Preserve Existing Logic** - Maintain working features when adding new ones
+
+### Error Handling Patterns
+```javascript
+// OpenAI API calls with error handling
+try {
+  const response = await makeOpenAIRequest(prompt, text);
+  // Handle success
+} catch (error) {
+  console.error('AI request failed:', error);
+  // Graceful degradation
+}
+```
+
+## Common Development Issues
+
+### CSS Typos
+- **Critical**: Watch for "!importnat" vs "!important" typos
+- These break layout completely and are easy to miss
+- Always double-check CSS syntax
+
+### Timing Issues
+- Use polling (200ms intervals) for UI initialization
+- Slack's DOM loads asynchronously, requiring careful timing
+- Avoid long delays that impact user experience
+
+### Text Extraction Complexity
+- Slack uses Quill editor with complex DOM structure
+- Always use `extractTextFromQuillEditor()` function
+- Handle placeholder text removal with regex patterns
+- Preserve paragraph structure when extracting text
+
+## Testing Workflow
+
+### Local Development
+1. Modify [custom_slack_ext.js](mdc:custom_slack_ext.js)
+2. Run [slack_patcher.sh](mdc:slack_patcher.sh) to inject changes
+3. Restart Slack desktop app
+4. Test all features thoroughly
+
+### Verification Steps
+- Check AI menu dropdown functionality
+- Verify text extraction from composer
+- Test OpenAI API integration
+- Confirm message summarization still works
+
+## Git Workflow
+
+### Commit Messages
+Use conventional commit format:
+- `feat:` for new features
+- `fix:` for bug fixes  
+- `refactor:` for code improvements
+
+### Before Committing
+- Test all AI menu options
+- Verify no console errors
+- Check button styling and positioning
+- Ensure fast initialization (200ms polling)
+
+## API Integration Best Practices
+
+### OpenAI Requests
+- Use consistent prompt formatting
+- Implement proper error handling
+- Provide user feedback during processing
+- Handle API rate limits gracefully
+
+### Configuration Management
+- Store API keys securely
+- Use environment variables when possible
+- Provide clear setup instructions in [README.md](mdc:README.md)
+

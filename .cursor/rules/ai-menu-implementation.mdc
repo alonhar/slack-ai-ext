@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# AI Dropdown Menu Implementation Guide
+
+The AI composer menu in [custom_slack_ext.js](mdc:custom_slack_ext.js) transforms a single button into a dropdown with multiple text processing options.
+
+## Menu Structure
+
+The dropdown menu includes 6 AI-powered text processing options:
+- **Improve Writing** - General text enhancement
+- **Translate to English** - Language translation
+- **Fix Spelling & Grammar** - Grammar and spelling correction
+- **Make Professional** - Professional tone adjustment
+- **Make Casual** - Casual tone adjustment  
+- **Make Shorter** - Text condensation
+
+## Key Implementation Patterns
+
+### Button Creation
+```javascript
+// Creates horizontal layout with icon + text + dropdown arrow
+const button = document.createElement('button');
+button.innerHTML = `<span class="ai-icon">✨</span> AI <span class="dropdown-arrow">▼</span>`;
+```
+
+### Text Extraction Logic
+- Uses `extractTextFromQuillEditor()` function for complex Slack editor handling
+- Removes placeholder text with regex: `/Type a message\.\.\./g`
+- Extracts paragraphs and joins with newlines
+- Handles both simple text and complex Quill editor structures
+
+### OpenAI Integration
+Each menu option uses specific prompts:
+- Consistent API call pattern with `makeOpenAIRequest()`
+- Error handling for API failures
+- Text replacement in editor after successful processing
+
+## Critical Implementation Notes
+
+1. **CSS Styling** - Watch for typos like "!importnat" vs "!important"
+2. **Initialization Timing** - Uses 200ms polling for fast button appearance
+3. **Event Handling** - Dropdown toggles on button click, closes on outside clicks
+4. **Text Replacement** - Preserves Slack's editor state and formatting
+
+## Common Issues
+
+- **CSP Blocking** - External script loading may be blocked by Content Security Policy
+- **Editor State** - Must handle Slack's complex Quill editor properly
+- **Timing** - Button must appear quickly after composer loads (200ms polling)
+

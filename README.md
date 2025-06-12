@@ -1,14 +1,17 @@
 # 🚀 AI-Powered Slack Extension
 
-A powerful Slack desktop extension that adds **AI summarization** and **message enhancement** capabilities directly to your Slack workspace using OpenAI's GPT-4.
+A powerful Slack desktop extension that adds **AI summarization**, **message enhancement**, and **custom AI operations** directly to your Slack workspace using OpenAI's GPT-4.
 
 ## ✨ Features
 
 - **🤖 AI Message Summarization**: Hover over any message and click the ✨ button to get an AI-powered summary
-- **📝 AI Message Enhancement**: Click the ✨ AI button in the composer to improve your message before sending
+- **📝 AI Message Enhancement**: Comprehensive dropdown menu with multiple AI-powered text improvements
+- **⚡ Custom AI Operations**: Create your own custom AI prompts and operations
 - **🔐 Secure API Key Management**: Store your OpenAI API key securely in your browser's localStorage
 - **⌨️ Keyboard Shortcuts**: Quick access to settings and features
-- **🌍 Cross-Platform**: Works on both Linux and macOS
+- **🌍 Cross-Platform**: Works on both Linux and macOS with automatic integrity checking
+- **🔧 Advanced Debugging**: Built-in debugging tools and console functions
+
 ![image](https://github.com/user-attachments/assets/a2a96bbb-62a3-429e-a44b-89cd3aa1c95a)
 
 ## 📋 Prerequisites
@@ -21,32 +24,61 @@ A powerful Slack desktop extension that adds **AI summarization** and **message 
 
 ### 1. Patch Slack
 ```bash
-./slack_patcher.sh patch
+./slack_patcher.sh
 ```
 
 ### 2. Set Up Your OpenAI API Key
 1. Start Slack
 2. Press **`Ctrl+Alt+A`** to open API settings
 3. Enter your OpenAI API key
-4. Click **Save Key** and **Test**
+4. Click **Save Key**
 
 ### 3. Start Using AI Features!
+
+**Message Enhancement:**
+- Type your message and click the **✨ AI** button for quick improvement
+- Click the **▾** dropdown for more options:
+  - 📝 Improve Writing
+  - 🌐 Translate to English  
+  - 🔧 Fix Spelling & Grammar
+  - 👔 Make Professional
+  - 😊 Make Casual
+  - ✂️ Make Shorter
+  - ⚡ Your Custom Operations
 
 **Message Summarization:**
 - Hover over any message and click the **✨** button
 
-**Message Enhancement:**
-- Type your message and click the **✨ AI** button
+**Custom Operations:**
+- Right-click the AI button or press `Ctrl+Alt+A`
+- Navigate to "Custom Operations" section
+- Click "Add Operation" to create your own AI prompts
+
+## ⚡ Custom AI Operations
+
+Create personalized AI operations for your specific needs:
+
+1. **Access Settings**: Right-click AI button or press `Ctrl+Alt+A`
+2. **Add Operation**: Click "Add Operation" in the Custom Operations section
+3. **Configure**: 
+   - **Title**: Name your operation (e.g., "Make Funny", "Technical Review")
+   - **Prompt**: Write your custom instruction for the AI
+4. **Use**: Your custom operations appear in the AI dropdown menu with ⚡ icons
+
+### Example Custom Operations:
+- **Make Funny**: "Rewrite this text to be humorous and entertaining"
+- **Technical Review**: "Review this technical content for accuracy and clarity"
+- **Meeting Summary**: "Convert this into a structured meeting summary with action items"
 
 ## ⌨️ Keyboard Shortcuts
 
-- `Ctrl+Alt+A` - Open API Key Settings
+- `Ctrl+Alt+A` - Open API Key Settings & Custom Operations Manager
 
 ## 🔧 Commands
 
 ### Patch Slack
 ```bash
-./slack_patcher.sh patch
+./slack_patcher.sh
 ```
 
 ### Restore Original Slack
@@ -54,12 +86,25 @@ A powerful Slack desktop extension that adds **AI summarization** and **message 
 ./slack_patcher.sh restore
 ```
 
-## 🛠️ Development
+## 🛠️ Development & Debugging
 
 ### Making Changes
 1. Edit `custom_slack_ext.js`
-2. Run `./slack_patcher.sh patch`
+2. Run `./slack_patcher.sh`
 3. Restart Slack
+
+### Debug Functions
+Open browser console (F12) and use these functions:
+```javascript
+// Test localStorage functionality
+testSlackExtensionStorage()
+
+// Manually refresh AI button
+refreshSlackExtensionButton()
+
+// Check custom operations
+getCustomOperations()
+```
 
 ### Debug Mode
 ```bash
@@ -69,7 +114,9 @@ SLACK_DEVELOPER_MENU=true slack
 ## 📁 Project Structure
 
 - `slack_patcher.sh` - Main patcher script (Linux & macOS)
+- `slack_patcher-v2.sh` - Alternative patcher version
 - `custom_slack_ext.js` - AI extension code
+- `integrity.js` - File integrity calculation (for macOS)
 - `slack_backup/` - Backup directory (auto-created)
 - `FEATURES.md` - Detailed technical documentation
 
@@ -77,8 +124,9 @@ SLACK_DEVELOPER_MENU=true slack
 
 - API keys stored locally in browser localStorage
 - Only your messages are sent to OpenAI for processing
-- Original Slack files automatically backed up
+- Original Slack files automatically backed up with integrity checking
 - No external dependencies or tracking
+- Custom operations stored locally in your browser
 
 ## 🚨 Troubleshooting
 
@@ -88,13 +136,29 @@ SLACK_DEVELOPER_MENU=true slack
 ```
 
 ### AI Features Not Working
-1. Press `Ctrl+Alt+A` and test your API key
+1. Press `Ctrl+Alt+A` and verify your API key
 2. Check DevTools console (F12) for errors
 3. Verify OpenAI account has available credits
+4. Run `testSlackExtensionStorage()` in console
+
+### Custom Operations Not Persisting
+1. Open console (F12) and run `testSlackExtensionStorage()`
+2. Check if localStorage is working properly
+3. Try `refreshSlackExtensionButton()` to reload operations
 
 ### Extension Not Loading
 1. Start with debug mode: `SLACK_DEVELOPER_MENU=true slack`
-2. Look for "SLACK EXTENSION: ✅ Loaded successfully!" in console
+2. Look for "SLACK EXTENSION: ✅ Extension loaded and active" in console
+3. Check for localStorage test results in console
+
+## 🆕 Recent Updates
+
+- **Custom AI Operations**: Create and manage your own AI prompts
+- **Improved UX**: No more disruptive alert dialogs, inline error messages
+- **One-Click Delete**: Remove custom operations without confirmation
+- **Enhanced Debugging**: Comprehensive logging and test functions
+- **Better Persistence**: Improved localStorage handling and monitoring
+- **Cross-Platform Integrity**: Automatic file integrity checking on macOS
 
 ## ⚠️ Disclaimer
 

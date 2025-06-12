@@ -1,0 +1,42 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Slack AI Extension Project Overview
+
+This project is a Slack desktop extension that adds AI-powered features to the Slack app by modifying the app.asar file.
+
+## Core Files
+
+- **[custom_slack_ext.js](mdc:custom_slack_ext.js)** - Main extension script with AI features (message summarization, text improvement, dropdown menus)
+- **[slack_patcher.sh](mdc:slack_patcher.sh)** - Shell script that patches Slack's app.asar file to inject the extension
+- **[integrity.js](mdc:integrity.js)** - Calculates ASAR file integrity checksums using crypto and @electron/asar
+- **[package.json](mdc:package.json)** - ES module configuration with required dependencies
+
+## Key Features
+
+1. **Message Summarization** - AI-powered summarization of Slack conversations
+2. **AI Composer Menu** - Dropdown with 6 text processing options:
+   - Improve Writing
+   - Translate to English  
+   - Fix Spelling & Grammar
+   - Make Professional
+   - Make Casual
+   - Make Shorter
+3. **Text Extraction** - Advanced Quill editor text handling with paragraph extraction and placeholder removal
+
+## Development Workflow
+
+1. Modify [custom_slack_ext.js](mdc:custom_slack_ext.js) for feature changes
+2. Use [slack_patcher.sh](mdc:slack_patcher.sh) to inject changes into Slack
+3. Calculate integrity with [integrity.js](mdc:integrity.js) for verification
+4. Test features in Slack desktop app
+
+## Technical Notes
+
+- Uses ES modules ("type": "module" in package.json)
+- OpenAI API integration for all AI features
+- CSP (Content Security Policy) considerations for external script loading
+- 200ms polling for fast UI initialization
+

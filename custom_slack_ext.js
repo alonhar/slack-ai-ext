@@ -1404,14 +1404,41 @@ try {
             `;
             
             cancelBtn.addEventListener('click', () => formOverlay.remove());
+            // Create error message element (initially hidden)
+            const errorMsg = document.createElement('div');
+            errorMsg.style.cssText = `
+                background: #f8d7da !important;
+                color: #721c24 !important;
+                border: 1px solid #f5c6cb !important;
+                border-radius: 4px !important;
+                padding: 10px !important;
+                margin-bottom: 15px !important;
+                font-size: 14px !important;
+                display: none !important;
+            `;
+            errorMsg.textContent = 'Please fill in both title and prompt';
+            
             saveBtn.addEventListener('click', () => {
                 const title = titleInput.value.trim();
                 const prompt = promptInput.value.trim();
                 
                 if (!title || !prompt) {
-                    alert('Please fill in both title and prompt');
+                    errorMsg.style.display = 'block';
+                    // Focus on the empty field
+                    if (!title) {
+                        titleInput.focus();
+                        titleInput.style.borderColor = '#dc3545';
+                    } else if (!prompt) {
+                        promptInput.focus();
+                        promptInput.style.borderColor = '#dc3545';
+                    }
                     return;
                 }
+                
+                // Hide error message if validation passes
+                errorMsg.style.display = 'none';
+                titleInput.style.borderColor = '#e1e5e9';
+                promptInput.style.borderColor = '#e1e5e9';
                 
                                  if (existingOp) {
                      console.log('SLACK EXTENSION: Updating existing operation:', existingOp.id, title);
@@ -1437,10 +1464,30 @@ try {
             form.appendChild(titleInput);
             form.appendChild(promptLabel);
             form.appendChild(promptInput);
+            form.appendChild(errorMsg);
             form.appendChild(formButtons);
             
             formOverlay.appendChild(form);
             document.body.appendChild(formOverlay);
+            
+            // Clear error state when user starts typing
+            titleInput.addEventListener('input', () => {
+                if (titleInput.value.trim()) {
+                    titleInput.style.borderColor = '#e1e5e9';
+                    if (titleInput.value.trim() && promptInput.value.trim()) {
+                        errorMsg.style.display = 'none';
+                    }
+                }
+            });
+            
+            promptInput.addEventListener('input', () => {
+                if (promptInput.value.trim()) {
+                    promptInput.style.borderColor = '#e1e5e9';
+                    if (titleInput.value.trim() && promptInput.value.trim()) {
+                        errorMsg.style.display = 'none';
+                    }
+                }
+            });
             
             titleInput.focus();
         }

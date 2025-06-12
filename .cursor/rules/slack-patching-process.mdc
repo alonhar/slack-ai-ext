@@ -1,0 +1,71 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Slack Patching Process and Integrity Management
+
+This project modifies Slack's desktop app by patching the app.asar file to inject custom JavaScript functionality.
+
+## Patching Workflow
+
+### 1. Backup and Extract
+[slack_patcher.sh](mdc:slack_patcher.sh) handles the complete patching process:
+- Creates backup of original app.asar
+- Extracts ASAR contents to temporary directory
+- Injects [custom_slack_ext.js](mdc:custom_slack_ext.js) into Slack's main process
+
+### 2. Integrity Calculation
+[integrity.js](mdc:integrity.js) provides checksum verification:
+```bash
+# Calculate integrity hash
+node integrity.js /path/to/app.asar
+```
+- Uses crypto module for SHA-256 hashing
+- Integrates with @electron/asar for ASAR file handling
+- Outputs only hash value for scripting
+
+### 3. macOS Specific Handling
+The patcher includes macOS-specific features:
+- Updates Info.plist files with new checksums
+- Uses grep/sed for plist modifications
+- Calculates before/after integrity hashes
+
+## File Structure During Patching
+
+```
+Slack.app/Contents/Resources/
+├── app.asar (original)
+├── app.asar.backup (backup)
+└── app/ (extracted contents)
+    └── dist/
+        └── main.bundle.js (injection point)
+```
+
+## Key Technical Details
+
+### ASAR File Modification
+- Extracts using @electron/asar package
+- Modifies main.bundle.js to include extension
+- Rebuilds ASAR with modifications
+
+### Integrity Verification
+- SHA-256 checksums for verification
+- Before/after comparison for change tracking
+- Info.plist updates for macOS code signing
+
+### ES Module Compatibility
+[package.json](mdc:package.json) configured with:
+```json
+{
+  "type": "module"
+}
+```
+
+## Safety Considerations
+
+1. **Always backup** original app.asar before patching
+2. **Verify integrity** before and after modifications
+3. **Test thoroughly** after patching
+4. **Keep backups** for easy restoration
+
