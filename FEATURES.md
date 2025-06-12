@@ -53,6 +53,7 @@ Create unlimited personalized AI operations tailored to your specific needs.
 - **Mention-Aware**: Safely handles special elements like `@here` and `@username` mentions without breaking them.
 - **Quill Integration**: Interacts directly with Slack's underlying Quill editor for reliable text manipulation.
 - **Error Recovery**: Robust error handling with visual feedback for failed operations.
+- **Text Cleaning**: Advanced regex processing to clean message text before sending to OpenAI API.
 
 ## 🤖 AI Message Summarization
 
@@ -79,6 +80,23 @@ A secure and user-friendly interface for managing your OpenAI API key.
 - **Visual Status**: Clear indicators showing whether a key is set with masked display (•••xxxx).
 - **Integrated Management**: Combined interface for API keys and custom operations.
 
+## 🌐 External Script Loading
+
+The extension supports loading additional functionality from external sources.
+
+### Features
+- **HTTP Server Integration**: Automatically attempts to load scripts from `http://localhost:9966/index.js`
+- **Graceful Fallback**: If external script is unavailable, the extension continues with built-in functionality
+- **Error Handling**: Robust error handling for network issues or script loading failures
+- **Delayed Loading**: 10-second delay after initialization to ensure Slack is fully loaded
+- **Modern Fetch API**: Uses fetch() instead of script tags for better error handling
+
+### Use Cases
+- **Development Mode**: Load development versions of features during testing
+- **Custom Extensions**: Add organization-specific functionality
+- **Feature Toggles**: Enable/disable features based on external configuration
+- **Live Updates**: Update functionality without modifying the core extension
+
 ## 🔧 Advanced Features
 
 ### Debugging & Development
@@ -88,6 +106,7 @@ A secure and user-friendly interface for managing your OpenAI API key.
   - `getCustomOperations()` - Inspect stored custom operations
 - **Comprehensive Logging**: Detailed console output for troubleshooting
 - **Startup Diagnostics**: Automatic localStorage and DOM readiness checks
+- **Request/Response Logging**: Optional logging of OpenAI API requests and responses for debugging
 
 ### User Experience Improvements
 - **Non-Disruptive Validation**: Inline error messages instead of popup alerts
@@ -98,23 +117,44 @@ A secure and user-friendly interface for managing your OpenAI API key.
 
 ### Cross-Platform Support
 - **Linux & macOS**: Full compatibility with both operating systems
-- **Integrity Checking**: Automatic file integrity verification on macOS
+- **Integrity Checking**: Automatic file integrity verification on macOS using dedicated `integrity.js` utility
 - **Backup Management**: Automatic backup creation and restoration
 - **Version Detection**: Smart detection of Slack installation paths
+- **Checksum Updates**: Automatic updating of app.asar checksums in Info.plist files
 
 ## 🚀 Performance & Reliability
 
 ### Initialization System
+- **Responsive Monitoring**: Fast 200ms polling intervals for quick button appearance
 - **Multi-Stage Loading**: Multiple initialization attempts ensure reliable startup
 - **DOM Monitoring**: Continuous monitoring for Slack interface changes
 - **Auto-Recovery**: Automatic button recreation when Slack updates the interface
-- **Responsive Design**: Fast button appearance with 200ms polling intervals
+- **Smart Timing**: Replaces fixed delays with responsive monitoring
 
 ### Data Persistence
 - **localStorage Integration**: Reliable storage of API keys and custom operations
 - **Cross-Session Persistence**: Settings and operations survive Slack restarts
 - **Error Recovery**: Graceful handling of localStorage access issues
 - **Data Validation**: Automatic validation and cleanup of stored data
+
+### AI Integration
+- **OpenAI GPT-4o**: Uses the latest GPT-4o model for optimal performance
+- **Streaming Support**: Efficient handling of AI responses
+- **Rate Limiting**: Built-in protection against API rate limits
+- **Error Handling**: Comprehensive error handling for API failures
+
+## 🛠️ Installation & Patching
+
+### Automated Installation
+- **Shell Script**: `slack_patcher.sh` handles the complete installation process
+- **Backup Creation**: Automatic backup of original Slack files before modification
+- **Integrity Verification**: Calculates and updates file checksums for macOS compatibility
+- **Cross-Platform**: Supports both Linux and macOS Slack installations
+
+### File Integrity Management
+- **Checksum Calculation**: Uses `@electron/asar` for accurate integrity checking
+- **Automatic Updates**: Updates Info.plist files with new checksums after modification
+- **Backup Restoration**: Easy restoration from backups if needed
 
 ---
 
