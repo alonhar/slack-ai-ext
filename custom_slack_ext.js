@@ -3,6 +3,26 @@
 
 console.log('SLACK EXTENSION: Loading...');
 
+// Test localStorage availability immediately
+try {
+    const testKey = 'slack_extension_test_' + Date.now();
+    localStorage.setItem(testKey, 'test');
+    const testValue = localStorage.getItem(testKey);
+    localStorage.removeItem(testKey);
+    console.log('SLACK EXTENSION: localStorage test successful:', testValue === 'test');
+    
+    // Check existing data
+    const existingApiKey = localStorage.getItem('slack_extension_openai_key');
+    const existingOps = localStorage.getItem('slack_extension_custom_operations');
+    console.log('SLACK EXTENSION: Existing data check:', {
+        hasApiKey: !!existingApiKey,
+        hasCustomOps: !!existingOps,
+        customOpsData: existingOps ? JSON.parse(existingOps) : null
+    });
+} catch (error) {
+    console.error('SLACK EXTENSION: localStorage test failed:', error);
+}
+
 // Wrapped in try-catch to prevent any startup failures
 try {
     // Function to add AI summarize button to message hover actions
@@ -394,6 +414,7 @@ try {
 
     // Function to add AI button to message composer
     function addAIButton() {
+        console.log('SLACK EXTENSION: addAIButton() called');
         try {
             // Check if button already exists
             if (document.querySelector('.slack-ai-composer-container')) {
@@ -468,6 +489,7 @@ try {
             
             // Add custom operations
             const customOperations = getCustomOperations();
+            console.log('SLACK EXTENSION: Loading custom operations:', customOperations);
             if (customOperations.length > 0) {
                 const customSeparator = document.createElement('div');
                 customSeparator.style.cssText = 'height: 1px; background-color: #eee; margin: 4px 0;';
@@ -479,6 +501,10 @@ try {
                     customButton.dataset.action = `custom_${customOp.id}`;
                     customButton.style.cssText = improveButton.style.cssText;
                     setHoverEffect(customButton);
+                    
+                    // Add event listener immediately when creating the button
+                    customButton.addEventListener('click', () => handleAIAction(`custom_${customOp.id}`));
+                    
                     menu.appendChild(customButton);
                 });
             }
@@ -656,13 +682,7 @@ try {
             casualButton.addEventListener('click', () => handleAIAction('casual'));
             shortenButton.addEventListener('click', () => handleAIAction('shorten'));
             
-            // Add event listeners for custom operations
-            customOperations.forEach(customOp => {
-                const customButton = menu.querySelector(`[data-action="custom_${customOp.id}"]`);
-                if (customButton) {
-                    customButton.addEventListener('click', () => handleAIAction(`custom_${customOp.id}`));
-                }
-            });
+            // Custom operation event listeners are now added when buttons are created above
             
             // Add event listener for manage button
             manageButton.addEventListener('click', () => {
@@ -673,6 +693,7 @@ try {
             // Find the best place to insert the button
             const actionButtons = composerBody.querySelector('.p-composer__actions') || composerBody;
             actionButtons.appendChild(container);
+            console.log('SLACK EXTENSION: AI button successfully added with', customOperations.length, 'custom operations');
             return true;
 
         } catch (error) {
@@ -779,11 +800,17 @@ try {
 
     // Function to refresh AI button (remove and re-add)
     function refreshAIButton() {
+        console.log('SLACK EXTENSION: refreshAIButton called');
         const existingContainer = document.querySelector('.slack-ai-composer-container');
         if (existingContainer) {
+            console.log('SLACK EXTENSION: Removing existing AI button container');
             existingContainer.remove();
+        } else {
+            console.log('SLACK EXTENSION: No existing AI button container found');
         }
-        return addAIButton();
+        const result = addAIButton();
+        console.log('SLACK EXTENSION: addAIButton result:', result);
+        return result;
     }
 
     // Function to try adding AI button with retries
@@ -863,7 +890,7 @@ try {
                         });
                         
                         mutation.removedNodes.forEach((node) => {
-                            if (node.nodeType === 1 && node.id === 'slack-ai-button') {
+                            if (node.nodeType === 1 && (node.id === 'slack-ai-button-container' || node.classList.contains('slack-ai-composer-container'))) {
                                 console.log('SLACK EXTENSION: AI button was removed, will re-add');
                                 shouldCheck = true;
                             }
@@ -873,7 +900,7 @@ try {
                 
                 if (shouldCheck) {
                     setTimeout(() => {
-                        if (!document.getElementById('slack-ai-button')) {
+                        if (!document.querySelector('.slack-ai-composer-container')) {
                             tryAddAIButton();
                         }
                     }, 500); // Small delay to let DOM settle
@@ -889,7 +916,7 @@ try {
         
         // Method 2: Polling backup (every 3 seconds)
         setInterval(() => {
-            if (!document.getElementById('slack-ai-button')) {
+            if (!document.querySelector('.slack-ai-composer-container')) {
                 tryAddAIButton();
             }
         }, 1000);
@@ -900,7 +927,7 @@ try {
             if (window.location.href !== lastUrl) {
                 lastUrl = window.location.href;
                 setTimeout(() => {
-                    if (!document.getElementById('slack-ai-button')) {
+                    if (!document.querySelector('.slack-ai-composer-container')) {
                         tryAddAIButton();
                     }
                 }, 1000); // Longer delay for navigation
@@ -953,6 +980,67 @@ try {
     // }, 5000);
 
     console.log('SLACK EXTENSION: Setup complete');
+    
+    // Force initialization after a delay to ensure DOM is ready
+    setTimeout(() => {
+        console.log('SLACK EXTENSION: Force initialization starting...');
+        initializeExtension();
+    }, 2000);
+    
+    // Additional initialization attempts
+    setTimeout(() => {
+        console.log('SLACK EXTENSION: Secondary initialization attempt...');
+        if (!document.querySelector('.slack-ai-composer-container')) {
+            console.log('SLACK EXTENSION: AI button not found, attempting to add...');
+            tryAddAIButton();
+        } else {
+            console.log('SLACK EXTENSION: AI button already exists');
+        }
+    }, 5000);
+    
+    // Test function for localStorage (can be called from console)
+    window.testSlackExtensionStorage = function() {
+        console.log('=== SLACK EXTENSION STORAGE TEST ===');
+        
+        // Test API key storage
+        const testApiKey = 'test-key-' + Date.now();
+        console.log('1. Testing API key storage...');
+        saveOpenAIKey(testApiKey);
+        const retrievedKey = getOpenAIKey();
+        console.log('Saved:', testApiKey, 'Retrieved:', retrievedKey, 'Match:', testApiKey === retrievedKey);
+        
+        // Test custom operations storage
+        console.log('2. Testing custom operations storage...');
+        const testOp = { id: 'test-' + Date.now(), title: 'Test Operation', prompt: 'Test prompt' };
+        const currentOps = getCustomOperations();
+        console.log('Current operations:', currentOps);
+        
+        const newOp = addCustomOperation(testOp.title, testOp.prompt);
+        console.log('Added operation:', newOp);
+        
+        const updatedOps = getCustomOperations();
+        console.log('Updated operations:', updatedOps);
+        
+        // Clean up test data
+        if (newOp) {
+            deleteCustomOperation(newOp.id);
+            console.log('Cleaned up test operation');
+        }
+        removeOpenAIKey();
+        console.log('Cleaned up test API key');
+        
+        console.log('=== STORAGE TEST COMPLETE ===');
+    };
+    
+    // Manual refresh function (can be called from console)
+    window.refreshSlackExtensionButton = function() {
+        console.log('=== MANUALLY REFRESHING AI BUTTON ===');
+        const result = refreshAIButton();
+        console.log('Refresh result:', result);
+        const customOps = getCustomOperations();
+        console.log('Current custom operations:', customOps);
+        console.log('=== REFRESH COMPLETE ===');
+    };
 
     // LocalStorage functions for API key management
     function saveOpenAIKey(apiKey) {
@@ -989,7 +1077,9 @@ try {
     function getCustomOperations() {
         try {
             const stored = localStorage.getItem('slack_extension_custom_operations');
-            return stored ? JSON.parse(stored) : [];
+            const result = stored ? JSON.parse(stored) : [];
+            console.log('SLACK EXTENSION: Retrieved custom operations from localStorage:', result);
+            return result;
         } catch (error) {
             console.error('SLACK EXTENSION: Error getting custom operations:', error);
             return [];
@@ -1051,7 +1141,9 @@ try {
 
     // Function to create custom operations management UI
     function createCustomOperationsSection() {
+        console.log('SLACK EXTENSION: createCustomOperationsSection called');
         const customOperations = getCustomOperations();
+        console.log('SLACK EXTENSION: createCustomOperationsSection found', customOperations.length, 'operations');
         
         const section = document.createElement('div');
         section.style.cssText = `
@@ -1096,6 +1188,7 @@ try {
         function renderOperations() {
             operationsList.innerHTML = '';
             const currentOperations = getCustomOperations();
+            console.log('SLACK EXTENSION: renderOperations called, found', currentOperations.length, 'operations:', currentOperations);
             
             if (currentOperations.length === 0) {
                 const emptyMessage = document.createElement('div');
@@ -1323,12 +1416,17 @@ try {
                 }
                 
                                  if (existingOp) {
+                     console.log('SLACK EXTENSION: Updating existing operation:', existingOp.id, title);
                      updateCustomOperation(existingOp.id, title, prompt);
                  } else {
-                     addCustomOperation(title, prompt);
+                     console.log('SLACK EXTENSION: Adding new operation:', title);
+                     const newOp = addCustomOperation(title, prompt);
+                     console.log('SLACK EXTENSION: New operation result:', newOp);
                  }
                  
+                 console.log('SLACK EXTENSION: Re-rendering operations list...');
                  renderOperations();
+                 console.log('SLACK EXTENSION: Refreshing AI button...');
                  refreshAIButton(); // Refresh the AI menu to include new/updated operations
                  formOverlay.remove();
             });
