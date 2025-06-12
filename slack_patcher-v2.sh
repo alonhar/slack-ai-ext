@@ -9,9 +9,41 @@
 # --- Configuration ---
 # Detect OS and set appropriate Slack path
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    SLACK_APP_ASAR_PATH="/Applications/Slack.app/Contents/Resources/app.asar"
-    echo "INFO: Detected macOS - using path: $SLACK_APP_ASAR_PATH"
+    # macOS - detect architecture and choose appropriate ASAR file
+    SLACK_RESOURCES_DIR="/Applications/Slack.app/Contents/Resources"
+    
+    # Detect architecture
+    ARCH=$(uname -m)
+    echo "INFO: Detected macOS architecture: $ARCH"
+    
+    if [[ "$ARCH" == "arm64" ]]; then
+        # Apple Silicon (M1/M2/M3)
+        CANDIDATE_ASAR="$SLACK_RESOURCES_DIR/app-arm64.asar"
+        ARCH_TYPE="ARM64"
+    elif [[ "$ARCH" == "x86_64" ]]; then
+        # Intel Mac
+        CANDIDATE_ASAR="$SLACK_RESOURCES_DIR/app-x64.asar"
+        ARCH_TYPE="Intel x64"
+    else
+        echo "WARNING: Unknown macOS architecture: $ARCH. Will try generic app.asar"
+        CANDIDATE_ASAR=""
+        ARCH_TYPE="Unknown"
+    fi
+    
+    # Check if architecture-specific ASAR exists, otherwise fall back to generic
+    if [[ -n "$CANDIDATE_ASAR" ]] && [[ -f "$CANDIDATE_ASAR" ]]; then
+        SLACK_APP_ASAR_PATH="$CANDIDATE_ASAR"
+        echo "INFO: Detected macOS ($ARCH_TYPE) - using architecture-specific: $SLACK_APP_ASAR_PATH"
+    else
+        SLACK_APP_ASAR_PATH="$SLACK_RESOURCES_DIR/app.asar"
+        if [[ -f "$SLACK_APP_ASAR_PATH" ]]; then
+            echo "INFO: Architecture-specific ASAR not found, using generic: $SLACK_APP_ASAR_PATH"
+        else
+            echo "ERROR: No suitable ASAR file found in $SLACK_RESOURCES_DIR"
+            echo "Checked for: app-arm64.asar, app-x64.asar, app.asar"
+            exit 1
+        fi
+    fi
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux
     SLACK_APP_ASAR_PATH="/usr/lib/slack/resources/app.asar"
@@ -271,26 +303,37 @@ patch_slack() {
         if [ "$old_checksum" == "$new_checksum" ]; then
             echo "INFO: [macOS] Checksums are identical. No Info.plist update needed."
         else
-            local slack_contents_dir
-            slack_contents_dir=$(dirname "$(dirname "$SLACK_APP_ASAR_PATH")")
+            local slack_contents_dir="/Applications/Slack.app/Contents"
             
             echo "INFO: [macOS] Searching for and replacing checksum in Info.plist files..."
+            echo "INFO: [macOS] Working directory: $slack_contents_dir"
             
-            local file_list
-            # Need sudo to grep in system directories, redirect stderr to hide permission errors for files we can't access anyway
-            file_list=$(sudo grep -r -l "$old_checksum" "$slack_contents_dir" 2>/dev/null)
-
-            if [ -n "$file_list" ]; then
-                echo "INFO: [macOS] Found files to update:"
-                echo "$file_list" | while IFS= read -r file; do
-                  echo "  - $file"
-                done
-
-                # Use xargs to pass file list to sed for replacement
-                echo "$file_list" | sudo xargs -I{} sed -i '' "s|${old_checksum}|${new_checksum}|g" {}
-                echo "INFO: [macOS] Info.plist checksum update complete."
+            # Change to the Contents directory and run the replacement
+            if [ -d "$slack_contents_dir" ]; then
+                echo "INFO: [macOS] Running checksum replacement from $slack_contents_dir"
+                (
+                    cd "$slack_contents_dir" || exit 1
+                    local files_found
+                    files_found=$(sudo grep -r -l "$old_checksum" . 2>/dev/null)
+                    
+                    if [ -n "$files_found" ]; then
+                        echo "INFO: [macOS] Found files to update:"
+                        echo "$files_found" | while IFS= read -r file; do
+                            echo "  - $file"
+                        done
+                        
+                        # Use the exact logic you specified
+                        sudo grep -r -l "$old_checksum" . | while read file; do 
+                            sudo sed -i '' "s/${old_checksum}/${new_checksum}/g" "$file"
+                        done
+                        echo "INFO: [macOS] Info.plist checksum update complete."
+                    else
+                        echo "WARNING: [macOS] No files found containing the old checksum. The application might not launch correctly."
+                    fi
+                )
             else
-                echo "WARNING: [macOS] No Info.plist files found containing the old checksum. The application might not launch correctly."
+                echo "ERROR: [macOS] Slack Contents directory not found at $slack_contents_dir"
+                exit 1
             fi
         fi
     fi
