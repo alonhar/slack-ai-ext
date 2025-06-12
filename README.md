@@ -116,18 +116,7 @@ The macOS patcher automatically:
 2. Run `./slack_patcher.sh`
 3. Restart Slack
 
-### Debug Functions
-Open browser console (F12) and use these functions:
-```javascript
-// Test localStorage functionality
-testSlackExtensionStorage()
 
-// Manually refresh AI button
-refreshSlackExtensionButton()
-
-// Check custom operations
-getCustomOperations()
-```
 
 ### Debug Mode
 ```bash
