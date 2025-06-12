@@ -11,7 +11,7 @@ A powerful Slack desktop extension that adds **AI summarization**, **message enh
 - **⌨️ Keyboard Shortcuts**: Quick access to settings and features
 - **🌍 Cross-Platform**: Works on both Linux and macOS with automatic integrity checking
 
-![image](https://github.com/user-attachments/assets/7b6b687a-7262-42fc-82e5-1f5bb988a27d)
+![](https://github.com/alonhar/slack-ai-ext/blob/main/output.gif)
 
 
 ## 📋 Prerequisites
