@@ -12,7 +12,9 @@ A powerful Slack desktop extension that adds **AI summarization**, **message enh
 - **🌍 Cross-Platform**: Works on both Linux and macOS with automatic integrity checking
 - **🔧 Advanced Debugging**: Built-in debugging tools and console functions
 
-![image](https://github.com/user-attachments/assets/a2a96bbb-62a3-429e-a44b-89cd3aa1c95a)
+![image](https://github.com/user-attachments/assets/c9c3a675-0fdf-4080-815a-7159f551bfba)
+![image](https://github.com/user-attachments/assets/18f27513-a2c4-404c-93b4-fb7168db7f12)
+
 
 ## 📋 Prerequisites
 
