@@ -26,7 +26,7 @@ A powerful Slack desktop extension that adds **AI summarization**, **message enh
 
 ### 1. Patch Slack
 ```bash
-./slack_patcher.sh
+./slack_patcher.sh patch
 ```
 
 ### 2. Set Up Your OpenAI API Key
@@ -80,7 +80,7 @@ Create personalized AI operations for your specific needs:
 
 ### Patch Slack
 ```bash
-./slack_patcher.sh
+./slack_patcher.sh patch
 ```
 
 **For macOS users with integrity checking:**
