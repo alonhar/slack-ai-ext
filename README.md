@@ -7,7 +7,6 @@ A powerful Slack desktop extension that adds **AI summarization**, **message enh
 - **🤖 AI Message Summarization**: Hover over any message and click the ✨ button to get an AI-powered summary
 - **📝 AI Message Enhancement**: Comprehensive dropdown menu with multiple AI-powered text improvements
 - **⚡ Custom AI Operations**: Create your own custom AI prompts and operations
-- **🔐 Secure API Key Management**: Store your OpenAI API key securely in your browser's localStorage
 - **⌨️ Keyboard Shortcuts**: Quick access to settings and features
 - **🌍 Cross-Platform**: Works on both Linux and macOS with automatic integrity checking
 
