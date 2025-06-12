@@ -153,26 +153,10 @@ SLACK_DEVELOPER_MENU=true slack
 
 ## 🚨 Troubleshooting
 
-### Slack Won't Start
+### Restore Original Slack
 ```bash
 ./slack_patcher.sh restore
 ```
-
-### AI Features Not Working
-1. Press `Ctrl+Alt+A` and verify your API key
-2. Check DevTools console (F12) for errors
-3. Verify OpenAI account has available credits
-4. Run `testSlackExtensionStorage()` in console
-
-### Custom Operations Not Persisting
-1. Open console (F12) and run `testSlackExtensionStorage()`
-2. Check if localStorage is working properly
-3. Try `refreshSlackExtensionButton()` to reload operations
-
-### Extension Not Loading
-1. Start with debug mode: `SLACK_DEVELOPER_MENU=true slack`
-2. Look for "SLACK EXTENSION: ✅ Extension loaded and active" in console
-3. Check for localStorage test results in console
 
 ## 🆕 Recent Updates
 
@@ -190,7 +174,3 @@ This extension modifies the Slack desktop application. Use at your own risk. Not
 ## 📄 License
 
 MIT License
-
----
-
-*Built with AI assistance by [vibecoding](https://vibecoding.com)* 

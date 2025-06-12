@@ -1,9 +1,6 @@
-// custom_slack_ext.js
-// This is your custom JavaScript file that will be injected into Slack.
 
 console.log('SLACK EXTENSION: Loading...');
 
-// Test localStorage availability immediately
 try {
     const testKey = 'slack_extension_test_' + Date.now();
     localStorage.setItem(testKey, 'test');
@@ -11,7 +8,6 @@ try {
     localStorage.removeItem(testKey);
     console.log('SLACK EXTENSION: localStorage test successful:', testValue === 'test');
     
-    // Check existing data
     const existingApiKey = localStorage.getItem('slack_extension_openai_key');
     const existingOps = localStorage.getItem('slack_extension_custom_operations');
     const existingLang = localStorage.getItem('slack_extension_summarization_language');
@@ -26,17 +22,13 @@ try {
     console.error('SLACK EXTENSION: localStorage test failed:', error);
 }
 
-// Wrapped in try-catch to prevent any startup failures
 try {
-    // Function to add AI summarize button to message hover actions
     function addAISummarizeButton(messageActionsContainer) {
         try {
-            // Check if button already exists in this container
             if (messageActionsContainer.querySelector('.slack-ai-summarize-button')) {
                 return true;
             }
 
-            // Find the message actions group
             const actionsGroup = messageActionsContainer.querySelector('.c-message_actions__group') ||
                                messageActionsContainer.querySelector('[role="group"]') ||
                                messageActionsContainer;
@@ -45,7 +37,6 @@ try {
                 return false;
             }
 
-            // Create the AI summarize button
             const aiButton = document.createElement('button');
             aiButton.className = 'c-button-unstyled c-icon_button c-icon_button--size_small c-message_actions__button c-icon_button--default slack-ai-summarize-button';
             aiButton.type = 'button';
@@ -54,7 +45,6 @@ try {
             aiButton.setAttribute('aria-label', 'Summarize message with AI');
             aiButton.style.cssText = 'font-size: 16px !important;';
 
-            // Add click handler
             aiButton.addEventListener('click', async function(event) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -62,7 +52,6 @@ try {
                 const originalText = aiButton.innerHTML;
                 
                 try {
-                    // Find the message element
                     const messageElement = messageActionsContainer.closest('[data-qa="virtual-list-item"]') ||
                                          messageActionsContainer.closest('.c-virtual_list__item') ||
                                          messageActionsContainer.closest('[role="listitem"]') ||
@@ -73,7 +62,6 @@ try {
                     const messageText = extractMessageText(messageElement);
                     if (!messageText || messageText.trim().length < 10) return;
                     
-                    // Set button to loading state
                     aiButton.innerHTML = '⏳';
                     aiButton.disabled = true;
                     aiButton.style.opacity = '0.6';
@@ -120,10 +108,8 @@ try {
         }
     }
 
-    // Function to extract text from a message element
     function extractMessageText(messageElement) {
         try {
-            // Try different selectors for message content
             const messageContent = messageElement.querySelector('.c-message_kit__text') ||
                                  messageElement.querySelector('[data-qa="message-text"]') ||
                                  messageElement.querySelector('.p-rich_text_section') ||
@@ -134,7 +120,6 @@ try {
                 const text = messageContent.textContent || messageContent.innerText || '';
                 return text.trim();
             } else {
-                // Fallback: try to get all text from the message element
                 const fallbackText = messageElement.textContent || messageElement.innerText || '';
                 return fallbackText.trim();
             }
@@ -145,7 +130,6 @@ try {
         }
     }
 
-    // Unified AI function that works with both OpenAI and Gemini
     async function callAI(messages, options = {}) {
         const provider = getAIProvider();
         const maxTokens = options.maxTokens || 200;
@@ -158,7 +142,6 @@ try {
         }
     }
 
-    // Function to call OpenAI API
     async function callOpenAI(messages, options = {}) {
         try {
             const apiKey = getOpenAIKey();
@@ -200,7 +183,6 @@ try {
         }
     }
 
-    // Function to call Gemini API
     async function callGemini(messages, options = {}) {
         try {
             const apiKey = getGeminiKey();
@@ -208,7 +190,6 @@ try {
                 throw new Error('No Gemini API key found. Please set your API key using Ctrl+Alt+A.');
             }
 
-            // Convert OpenAI-style messages to Gemini format
             let prompt = '';
             messages.forEach(msg => {
                 if (msg.role === 'system') {
@@ -256,12 +237,10 @@ try {
         }
     }
 
-    // Function to summarize text using selected AI provider
     async function summarizeWithAI(text) {
         try {
             const selectedLanguage = getSummarizationLanguage();
             
-            // Build the system prompt based on language preference
             let systemPrompt = 'You are a helpful assistant that summarizes Slack messages. Provide a concise, clear summary that captures the key points. Use proper formatting with line breaks where appropriate and bullet points where appropriate.';
             
             if (selectedLanguage === 'auto') {
@@ -289,16 +268,13 @@ try {
         }
     }
 
-    // Function to display summary under a message
     function displaySummaryUnderMessage(messageElement, summary) {
         try {
-            // Remove any existing summary for this message
             const existingSummary = messageElement.querySelector('.slack-ai-summary');
             if (existingSummary) {
                 existingSummary.remove();
             }
 
-            // Create summary container
             const summaryContainer = document.createElement('div');
             summaryContainer.className = 'slack-ai-summary';
             summaryContainer.style.cssText = `
@@ -316,7 +292,6 @@ try {
                 word-wrap: break-word !important;
             `;
 
-            // Add summary header with AI icon
             const summaryHeader = document.createElement('div');
             summaryHeader.style.cssText = `
                 display: flex !important;
@@ -329,7 +304,6 @@ try {
             `;
             summaryHeader.innerHTML = '🤖 AI Summary';
 
-            // Add the summary text with proper line break handling
             const summaryText = document.createElement('div');
             summaryText.style.cssText = `
                 white-space: pre-wrap !important;
@@ -338,7 +312,6 @@ try {
             `;
             summaryText.textContent = summary;
 
-            // Add close button
             const closeButton = document.createElement('button');
             closeButton.innerHTML = '×';
             closeButton.style.cssText = `
@@ -375,15 +348,12 @@ try {
                 closeButton.style.opacity = '0.7';
             });
 
-            // Assemble the summary
             summaryContainer.appendChild(summaryHeader);
             summaryContainer.appendChild(summaryText);
             summaryContainer.appendChild(closeButton);
 
-            // Insert the summary after the message
             messageElement.appendChild(summaryContainer);
 
-            // Smooth scroll to show the summary
             setTimeout(() => {
                 summaryContainer.scrollIntoView({ 
                     behavior: 'smooth', 
@@ -396,11 +366,8 @@ try {
         }
     }
 
-    // Function to monitor for message action containers
     function setupMessageActionsMonitoring() {
-        // First, check for any existing message action containers
         function checkExistingContainers() {
-            // Use the correct selector found in debugging
             const existingContainers = document.querySelectorAll('.c-message_actions__container');
             
             existingContainers.forEach((container, index) => {
@@ -408,10 +375,8 @@ try {
             });
         }
         
-        // Check immediately
         checkExistingContainers();
         
-        // Set up polling to check periodically
         setInterval(checkExistingContainers, 2000);
         
         if (typeof MutationObserver === 'undefined') {
@@ -423,12 +388,10 @@ try {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === 1) { // Element node
-                            // Check if this is a message actions container (fixed selector)
                             if (node.classList && node.classList.contains('c-message_actions__container')) {
                                 setTimeout(() => addAISummarizeButton(node), 100);
                             }
                             
-                            // Also check for containers that might be added inside the node
                             if (node.querySelector) {
                                 const actionContainers = node.querySelectorAll('.c-message_actions__container');
                                 actionContainers.forEach(container => {
@@ -438,14 +401,12 @@ try {
                         }
                     });
                     
-                    // Also check if any removed nodes had our buttons
                     mutation.removedNodes.forEach((node) => {
                         if (node.nodeType === 1 && node.classList && node.classList.contains('c-message_actions__container')) {
                         }
                     });
                 }
                 
-                // Also check for attribute changes that might show/hide containers
                 if (mutation.type === 'attributes') {
                     const target = mutation.target;
                     if (target.classList && target.classList.contains('c-message_actions__container')) {
@@ -455,7 +416,6 @@ try {
             });
         });
 
-        // Start observing with more comprehensive options
         observer.observe(document.body, {
             childList: true,
             subtree: true,
@@ -463,29 +423,23 @@ try {
             attributeFilter: ['class', 'style']
         });
         
-        // Also set up hover detection on messages themselves
         setupMessageHoverDetection();
     }
     
-    // Function to set up hover detection on message elements
     function setupMessageHoverDetection() {
-        // Set up event delegation for hover events
         document.addEventListener('mouseenter', function(event) {
             const target = event.target;
             
-            // Check if target is an element node (not text node)
             if (!target || target.nodeType !== 1 || typeof target.closest !== 'function') {
                 return;
             }
             
-            // Check if we're hovering over a message or message-related element
             const messageElement = target.closest('[data-qa="virtual-list-item"]') ||
                                  target.closest('.c-virtual_list__item') ||
                                  target.closest('[role="listitem"]') ||
                                  target.closest('.c-message_kit__message');
                                  
             if (messageElement) {
-                // Look for message actions that might appear on hover (multiple attempts)
                 const checkForActions = () => {
                     const actionContainers = messageElement.querySelectorAll('.c-message_actions__container');
                     if (actionContainers.length > 0) {
@@ -497,9 +451,7 @@ try {
                     return false;
                 };
                 
-                // Try immediately
                 if (!checkForActions()) {
-                    // Try again after small delays
                     setTimeout(checkForActions, 50);
                     setTimeout(checkForActions, 100);
                     setTimeout(checkForActions, 200);
@@ -508,20 +460,16 @@ try {
         }, true); // Use capture phase
     }
 
-    // Function to add AI button to message composer
     function addAIButton() {
         console.log('SLACK EXTENSION: addAIButton() called');
         try {
-            // Check if button already exists
             if (document.querySelector('.slack-ai-composer-container')) {
                 return true;
             }
 
-            // Find the composer body container
             const composerBody = document.querySelector('.p-composer__body');
             if (!composerBody) return false;
 
-            // --- Create Menu ---
             const menu = document.createElement('div');
             menu.className = 'slack-ai-composer-menu';
             menu.style.cssText = `
@@ -540,7 +488,6 @@ try {
             translateButton.dataset.action = 'translate';
             translateButton.style.cssText = improveButton.style.cssText;
 
-            // --- New Buttons ---
             const fixButton = document.createElement('button');
             fixButton.innerHTML = '🔧 Fix Spelling & Grammar';
             fixButton.dataset.action = 'fix';
@@ -583,7 +530,6 @@ try {
             menu.appendChild(casualButton);
             menu.appendChild(shortenButton);
             
-            // Add custom operations
             const customOperations = getCustomOperations();
             console.log('SLACK EXTENSION: Loading custom operations:', customOperations);
             if (customOperations.length > 0) {
@@ -598,14 +544,12 @@ try {
                     customButton.style.cssText = improveButton.style.cssText;
                     setHoverEffect(customButton);
                     
-                    // Add event listener immediately when creating the button
                     customButton.addEventListener('click', () => handleAIAction(`custom_${customOp.id}`));
                     
                     menu.appendChild(customButton);
                 });
             }
             
-            // Add "Manage Custom Operations" button
             const manageSeparator = document.createElement('div');
             manageSeparator.style.cssText = 'height: 1px; background-color: #eee; margin: 4px 0;';
             menu.appendChild(manageSeparator);
@@ -616,7 +560,6 @@ try {
             setHoverEffect(manageButton);
             menu.appendChild(manageButton);
 
-            // --- Create Main AI Button (which is now a segmented control) ---
             const aiButtonContainer = document.createElement('div');
             aiButtonContainer.id = 'slack-ai-button-container';
             aiButtonContainer.style.cssText = `
@@ -632,9 +575,7 @@ try {
                 box-shadow: 0 1px 1px rgba(0,0,0,0.05);
             `;
 
-            // Part 1: The "Improve" action button
             const actionPart = document.createElement('button');
-            // Use spans to ensure icon and text are treated as separate flex items, preventing vertical stacking.
             actionPart.innerHTML = '<span style="font-size: 13px; line-height: 1;">✨</span><span style="line-height: 1;">AI</span>';
             actionPart.title = 'Improve Writing';
             actionPart.setAttribute('type', 'button');
@@ -647,7 +588,6 @@ try {
                 font-size: 12px !important; font-weight: 600 !important;
             `;
 
-            // Part 2: The menu toggle button
             const menuPart = document.createElement('button');
             menuPart.innerHTML = '▾';
             menuPart.title = 'More AI Tools';
@@ -659,7 +599,6 @@ try {
                 display: flex !important; align-items: center !important;
             `;
 
-            // Hover effects for the two parts
             actionPart.addEventListener('mouseenter', () => actionPart.style.backgroundColor = 'rgba(0,0,0,0.15) !important');
             actionPart.addEventListener('mouseleave', () => actionPart.style.backgroundColor = 'transparent !important');
             menuPart.addEventListener('mouseenter', () => menuPart.style.backgroundColor = 'rgba(0,0,0,0.15) !important');
@@ -668,7 +607,6 @@ try {
             aiButtonContainer.appendChild(actionPart);
             aiButtonContainer.appendChild(menuPart);
 
-            // Add right-click handler to open API key settings
             aiButtonContainer.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 showAPIKeyOverlay();
@@ -680,11 +618,8 @@ try {
             container.appendChild(aiButtonContainer);
             container.appendChild(menu);
 
-            // --- Event Listeners ---
-            // Click "AI" part to improve text
             actionPart.addEventListener('click', () => handleAIAction('improve'));
             
-            // Click "▾" part to show/hide menu
             menuPart.addEventListener('click', (e) => {
                 e.stopPropagation();
                 menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
@@ -706,52 +641,41 @@ try {
                     if (!messageInput) throw new Error("Could not find message input");
 
                     let currentText = '';
-                    // Use the more robust logic you provided to correctly find the editor and its content.
                     if (messageInput.classList.contains('ql-editor') || messageInput.classList.contains('ql-container') || messageInput.querySelector('.ql-editor')) {
-                        // Find the actual ql-editor element, which might be the input itself or a child.
                         const editorElement = messageInput.classList.contains('ql-editor') ? messageInput : messageInput.querySelector('.ql-editor');
                         
                         const paragraphs = editorElement ? editorElement.querySelectorAll('p') : [];
                         
                         if (paragraphs.length > 0) {
-                            // Each <p> tag represents a line. We join them with newlines.
-                            // I have removed the .filter() from the old code to ensure empty lines are preserved.
                             currentText = Array.from(paragraphs)
                                 .map(p => p.textContent || '')
                                 .join('\n');
                         } else {
-                            // Fallback for single-line messages or other structures within the editor.
                             currentText = editorElement ? editorElement.innerText : messageInput.innerText;
                         }
                     } else {
-                        // Final fallback for non-Quill editors.
                         currentText = messageInput.innerText || messageInput.textContent || '';
                     }
 
-                    // Clean the placeholder text from the extracted content.
                     const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
                     if (!cleanedText) throw new Error("Input is empty");
                     
                                             const enhancedText = await enhanceTextWithAI(cleanedText, mode);
                     if (!enhancedText) throw new Error("No text returned from AI");
                     
-                    // Use a more robust text replacement method that handles rich text (like @mentions)
                     const editor = messageInput.closest('.ql-editor');
                     if (editor && typeof window.Quill !== 'undefined') {
                         const quill = window.Quill.find(editor);
                         if (quill) {
-                            // Using Quill's API is the most reliable way
                             quill.setText(enhancedText + '\n'); // Use setText to replace content
                             quill.setSelection(quill.getLength(), 0); // Move cursor to the end
                         } else {
-                            // Fallback if Quill instance not found, but editor exists
                             editor.focus();
                             document.execCommand('selectAll', false, null);
                             await new Promise(r => setTimeout(r, 50));
                             document.execCommand('insertText', false, enhancedText);
                         }
                     } else {
-                         // Fallback for older or different editor structures
                         messageInput.focus();
                         document.execCommand('selectAll', false, null);
                         await new Promise(r => setTimeout(r, 50));
@@ -778,15 +702,12 @@ try {
             casualButton.addEventListener('click', () => handleAIAction('casual'));
             shortenButton.addEventListener('click', () => handleAIAction('shorten'));
             
-            // Custom operation event listeners are now added when buttons are created above
             
-            // Add event listener for manage button
             manageButton.addEventListener('click', () => {
                 menu.style.display = 'none';
                 showAPIKeyOverlay();
             });
             
-            // Find the best place to insert the button
             const actionButtons = composerBody.querySelector('.p-composer__actions') || composerBody;
             actionButtons.appendChild(container);
             console.log('SLACK EXTENSION: AI button successfully added with', customOperations.length, 'custom operations');
@@ -798,9 +719,7 @@ try {
         }
     }
 
-    // UPDATED to accept a mode (including custom operations)
     async function enhanceTextWithAI(text, mode = 'improve') {
-        // Check if we have the required API key for the selected provider
         const provider = getAIProvider();
         const apiKey = provider === 'gemini' ? getGeminiKey() : getOpenAIKey();
         if (!apiKey) {
@@ -809,7 +728,6 @@ try {
 
         let userPrompt;
         
-        // Check if it's a custom operation
         if (mode.startsWith('custom_')) {
             const customId = mode.replace('custom_', '');
             const customOperations = getCustomOperations();
@@ -853,10 +771,8 @@ try {
         return enhancedText;
     }
 
-    // Function to add visual indicator that extension is loaded
     function addVisualIndicator() {
         try {
-            // Simple visual indicator - just log for now
             console.log('SLACK EXTENSION: ✅ Extension loaded and active');
             return true;
         } catch (error) {
@@ -865,20 +781,16 @@ try {
         }
     }
 
-    // Function to try adding banner safely
     function tryAddBanner() {
-        // Check if we have the necessary APIs
         if (typeof window === 'undefined' || typeof document === 'undefined') {
             return false;
         }
         
         console.log('SLACK EXTENSION: Environment check - process.type:', typeof process !== 'undefined' ? process.type : 'undefined');
         
-        // Try to add banner
         return addVisualIndicator();
     }
 
-    // Function to refresh AI button (remove and re-add)
     function refreshAIButton() {
         console.log('SLACK EXTENSION: refreshAIButton called');
         const existingContainer = document.querySelector('.slack-ai-composer-container');
@@ -893,7 +805,6 @@ try {
         return result;
     }
 
-    // Function to try adding AI button with retries
     function tryAddAIButton() {
         if (typeof document === 'undefined') {
             return false;
@@ -902,34 +813,26 @@ try {
         return addAIButton();
     }
 
-    // Main initialization function
     function initializeExtension() {
         console.log('SLACK EXTENSION: Initializing extension...');
         
-        // Add banner
         tryAddBanner();
         
-        // Debug DOM structure
         console.log('SLACK EXTENSION: DOM structure check - composer elements:', {
             composerBody: !!document.querySelector('.p-composer__body'),
             composerActions: !!document.querySelector('.p-composer__actions'),
             messageInput: !!document.querySelector('[data-qa="message_input"]')
         });
         
-        // Try to add AI button immediately
         if (!tryAddAIButton()) {
-            // If it fails, set up a watcher for when the composer appears
             setupComposerWatcher();
         }
         
-        // Set up message actions monitoring for summarize buttons
         setupMessageActionsMonitoring();
         
-        // Always set up the enhanced monitoring system
         setupButtonMonitoring();
     }
 
-    // Function to set up a watcher for the composer
     function setupComposerWatcher() {
         let attempts = 0;
         const maxAttempts = 40;
@@ -947,15 +850,12 @@ try {
         }, 200); // Check every 0.5 seconds
     }
 
-    // Enhanced monitoring system to keep button alive
     function setupButtonMonitoring() {
-        // Method 1: MutationObserver to detect DOM changes
         if (typeof MutationObserver !== 'undefined') {
             const observer = new MutationObserver((mutations) => {
                 let shouldCheck = false;
                 
                 mutations.forEach((mutation) => {
-                    // Check if composer-related elements were added/removed
                     if (mutation.type === 'childList') {
                         mutation.addedNodes.forEach((node) => {
                             if (node.nodeType === 1) { // Element node
@@ -987,21 +887,18 @@ try {
                 }
             });
             
-            // Start observing
             observer.observe(document.body, {
                 childList: true,
                 subtree: true
             });
         }
         
-        // Method 2: Polling backup (every 3 seconds)
         setInterval(() => {
             if (!document.querySelector('.slack-ai-composer-container')) {
                 tryAddAIButton();
             }
         }, 1000);
         
-        // Method 3: URL change detection (Slack uses pushState for navigation)
         let lastUrl = window.location.href;
         setInterval(() => {
             if (window.location.href !== lastUrl) {
@@ -1015,59 +912,19 @@ try {
         }, 1000);
     }
 
-    // Safe injection approach
     console.log('SLACK EXTENSION: Setting up safe injection...');
     
-    // COMMENTED OUT OLD INITIALIZATION TO PREVENT CONFLICTS
-    // Try immediately if DOM is ready
-    // if (typeof document !== 'undefined' && document.readyState !== 'loading') {
-    //     setTimeout(initializeExtension, 1000);
-    // }
     
-    // Listen for DOM ready
-    // if (typeof document !== 'undefined') {
-    //     document.addEventListener('DOMContentLoaded', () => {
-    //         console.log('SLACK EXTENSION: DOMContentLoaded fired');
-    //         setTimeout(initializeExtension, 1500);
-    //     });
-    // }
     
-    // Listen for window load
-    // if (typeof window !== 'undefined') {
-    //     window.addEventListener('load', () => {
-    //         console.log('SLACK EXTENSION: Window load fired');
-    //         setTimeout(initializeExtension, 2000);
-    //     });
-    // }
     
-    // Fallback polling (limited attempts)
-    // let attempts = 0;
-    // const maxAttempts = 5;
-    // const pollInterval = setInterval(() => {
-    //     attempts++;
-    //     console.log(`SLACK EXTENSION: Poll attempt ${attempts}/${maxAttempts}`);
-    //     
-    //     if (tryAddBanner() || attempts >= maxAttempts) {
-    //         // Also try AI button during polling
-    //         tryAddAIButton();
-    //         
-    //         if (attempts >= maxAttempts) {
-    //             clearInterval(pollInterval);
-    //             // Set up the composer watcher as a final fallback
-    //             setTimeout(setupComposerWatcher, 3000);
-    //         }
-    //     }
-    // }, 5000);
 
     console.log('SLACK EXTENSION: Setup complete');
     
-    // Force initialization after a delay to ensure DOM is ready
     setTimeout(() => {
         console.log('SLACK EXTENSION: Force initialization starting...');
         initializeExtension();
     }, 2000);
     
-    // Additional initialization attempts
     setTimeout(() => {
         console.log('SLACK EXTENSION: Secondary initialization attempt...');
         if (!document.querySelector('.slack-ai-composer-container')) {
@@ -1078,18 +935,15 @@ try {
         }
     }, 5000);
     
-    // Test function for localStorage (can be called from console)
     window.testSlackExtensionStorage = function() {
         console.log('=== SLACK EXTENSION STORAGE TEST ===');
         
-        // Test API key storage
         const testApiKey = 'test-key-' + Date.now();
         console.log('1. Testing API key storage...');
         saveOpenAIKey(testApiKey);
         const retrievedKey = getOpenAIKey();
         console.log('Saved:', testApiKey, 'Retrieved:', retrievedKey, 'Match:', testApiKey === retrievedKey);
         
-        // Test custom operations storage
         console.log('2. Testing custom operations storage...');
         const testOp = { id: 'test-' + Date.now(), title: 'Test Operation', prompt: 'Test prompt' };
         const currentOps = getCustomOperations();
@@ -1101,7 +955,6 @@ try {
         const updatedOps = getCustomOperations();
         console.log('Updated operations:', updatedOps);
         
-        // Clean up test data
         if (newOp) {
             deleteCustomOperation(newOp.id);
             console.log('Cleaned up test operation');
@@ -1112,7 +965,6 @@ try {
         console.log('=== STORAGE TEST COMPLETE ===');
     };
     
-    // Manual refresh function (can be called from console)
     window.refreshSlackExtensionButton = function() {
         console.log('=== MANUALLY REFRESHING AI BUTTON ===');
         const result = refreshAIButton();
@@ -1122,7 +974,6 @@ try {
         console.log('=== REFRESH COMPLETE ===');
     };
 
-    // LocalStorage functions for API key management
     function saveOpenAIKey(apiKey) {
         try {
             localStorage.setItem('slack_extension_openai_key', apiKey);
@@ -1153,7 +1004,6 @@ try {
         }
     }
 
-    // Function to save summarization language preference
     function saveSummarizationLanguage(language) {
         try {
             localStorage.setItem('slack_extension_summarization_language', language);
@@ -1165,7 +1015,6 @@ try {
         }
     }
 
-    // Function to get summarization language preference
     function getSummarizationLanguage() {
         try {
             return localStorage.getItem('slack_extension_summarization_language') || 'auto';
@@ -1175,7 +1024,6 @@ try {
         }
     }
 
-    // Function to save AI provider preference (openai or gemini)
     function saveAIProvider(provider) {
         try {
             localStorage.setItem('slack_extension_ai_provider', provider);
@@ -1187,7 +1035,6 @@ try {
         }
     }
 
-    // Function to get AI provider preference
     function getAIProvider() {
         try {
             return localStorage.getItem('slack_extension_ai_provider') || 'openai';
@@ -1197,7 +1044,6 @@ try {
         }
     }
 
-    // Function to save Gemini API key
     function saveGeminiKey(apiKey) {
         try {
             localStorage.setItem('slack_extension_gemini_key', apiKey);
@@ -1209,7 +1055,6 @@ try {
         }
     }
 
-    // Function to get Gemini API key
     function getGeminiKey() {
         try {
             return localStorage.getItem('slack_extension_gemini_key') || '';
@@ -1219,7 +1064,6 @@ try {
         }
     }
 
-    // Function to remove Gemini API key
     function removeGeminiKey() {
         try {
             localStorage.removeItem('slack_extension_gemini_key');
@@ -1230,7 +1074,6 @@ try {
         }
     }
 
-    // Functions to manage custom operations
     function getCustomOperations() {
         try {
             const stored = localStorage.getItem('slack_extension_custom_operations');
@@ -1296,7 +1139,6 @@ try {
         }
     }
 
-    // Function to create custom operations management UI
     function createCustomOperationsSection() {
         console.log('SLACK EXTENSION: createCustomOperationsSection called');
         const customOperations = getCustomOperations();
@@ -1309,7 +1151,6 @@ try {
             border-top: 1px solid #e1e5e9 !important;
         `;
         
-        // Custom Operations Title
         const customTitle = document.createElement('h3');
         customTitle.style.cssText = `
             margin: 0 0 15px 0 !important;
@@ -1322,7 +1163,6 @@ try {
         `;
         customTitle.innerHTML = '⚡ Custom Operations';
         
-        // Add Operation Button
         const addButton = document.createElement('button');
         addButton.innerHTML = '+ Add Operation';
         addButton.style.cssText = `
@@ -1338,7 +1178,6 @@ try {
             transition: background-color 0.2s ease !important;
         `;
         
-        // Operations List
         const operationsList = document.createElement('div');
         operationsList.id = 'custom-operations-list';
         
@@ -1433,7 +1272,6 @@ try {
                     border: 1px solid #e1e5e9 !important;
                 `;
                 
-                // Event listeners
                 editBtn.addEventListener('click', () => showOperationForm(op));
                                  deleteBtn.addEventListener('click', () => {
                      deleteCustomOperation(op.id);
@@ -1561,7 +1399,6 @@ try {
             `;
             
             cancelBtn.addEventListener('click', () => formOverlay.remove());
-            // Create error message element (initially hidden)
             const errorMsg = document.createElement('div');
             errorMsg.style.cssText = `
                 background: #f8d7da !important;
@@ -1581,7 +1418,6 @@ try {
                 
                 if (!title || !prompt) {
                     errorMsg.style.display = 'block';
-                    // Focus on the empty field
                     if (!title) {
                         titleInput.focus();
                         titleInput.style.borderColor = '#dc3545';
@@ -1592,7 +1428,6 @@ try {
                     return;
                 }
                 
-                // Hide error message if validation passes
                 errorMsg.style.display = 'none';
                 titleInput.style.borderColor = '#e1e5e9';
                 promptInput.style.borderColor = '#e1e5e9';
@@ -1627,7 +1462,6 @@ try {
             formOverlay.appendChild(form);
             document.body.appendChild(formOverlay);
             
-            // Clear error state when user starts typing
             titleInput.addEventListener('input', () => {
                 if (titleInput.value.trim()) {
                     titleInput.style.borderColor = '#e1e5e9';
@@ -1660,17 +1494,14 @@ try {
         return section;
     }
 
-    // Function to create and show API key management overlay
     function showAPIKeyOverlay() {
         try {
-            // Remove existing overlay if present
             const existingOverlay = document.getElementById('slack-extension-api-overlay');
             if (existingOverlay) {
                 existingOverlay.remove();
                 return; // Toggle behavior - close if already open
             }
             
-            // Create overlay background
             const overlayBackground = document.createElement('div');
             overlayBackground.id = 'slack-extension-api-overlay';
             overlayBackground.style.cssText = `
@@ -1687,7 +1518,6 @@ try {
                 backdrop-filter: blur(3px) !important;
             `;
             
-            // Create modal container
             const modal = document.createElement('div');
             modal.style.cssText = `
                 background: white !important;
@@ -1703,7 +1533,6 @@ try {
                 transition: transform 0.2s ease !important;
             `;
             
-            // Title
             const title = document.createElement('h2');
             title.style.cssText = `
                 margin: 0 0 10px 0 !important;
@@ -1716,7 +1545,6 @@ try {
             `;
             title.innerHTML = '🚀 Slack Extension - Settings';
             
-            // Subtitle
             const subtitle = document.createElement('p');
             subtitle.style.cssText = `
                 margin: 0 0 25px 0 !important;
@@ -1726,7 +1554,6 @@ try {
             `;
             subtitle.textContent = 'Configure your AI provider and API keys. All settings are stored securely in your browser\'s localStorage.';
             
-            // AI Provider Selection Section
             const providerSection = document.createElement('div');
             providerSection.style.cssText = `
                 margin-bottom: 20px !important;
@@ -1784,7 +1611,6 @@ try {
                 providerSelect.appendChild(option);
             });
             
-            // Provider change handler
             providerSelect.addEventListener('change', function() {
                 const selectedProvider = providerSelect.value;
                 console.log('SLACK EXTENSION: Provider changed to:', selectedProvider);
@@ -1803,7 +1629,6 @@ try {
             providerSection.appendChild(providerLabel);
             providerSection.appendChild(providerSelect);
             
-            // Current status
             const currentOpenAIKey = getOpenAIKey();
             const currentGeminiKey = getGeminiKey();
             const statusDiv = document.createElement('div');
@@ -1835,7 +1660,6 @@ try {
             
             updateStatusDisplay();
             
-            // Input section
             const inputLabel = document.createElement('label');
             inputLabel.style.cssText = `
                 display: block !important;
@@ -1859,7 +1683,6 @@ try {
                 margin-bottom: 15px !important;
             `;
             
-            // API key input
             const apiKeyInput = document.createElement('input');
             apiKeyInput.id = 'slack-extension-modal-api-input';
             apiKeyInput.type = 'password';
@@ -1886,7 +1709,6 @@ try {
                 transition: border-color 0.2s ease !important;
             `;
             
-            // Show/hide toggle
             const toggleButton = document.createElement('button');
             toggleButton.innerHTML = '👁️';
             toggleButton.style.cssText = `
@@ -1909,7 +1731,6 @@ try {
                 }
             });
             
-            // Button container
             const buttonContainer = document.createElement('div');
             buttonContainer.style.cssText = `
                 display: flex !important;
@@ -1917,7 +1738,6 @@ try {
                 margin-top: 20px !important;
             `;
             
-            // Save button
             const saveButton = document.createElement('button');
             saveButton.textContent = '💾 Save Key';
             saveButton.style.cssText = `
@@ -1933,7 +1753,6 @@ try {
                 transition: background-color 0.2s ease !important;
             `;
             
-            // Clear button
             const clearButton = document.createElement('button');
             clearButton.textContent = '🗑️ Clear';
             clearButton.style.cssText = `
@@ -1948,7 +1767,6 @@ try {
                 transition: background-color 0.2s ease !important;
             `;
             
-            // Test button
             const testButton = document.createElement('button');
             testButton.textContent = '🧪 Test';
             testButton.style.cssText = `
@@ -1963,7 +1781,6 @@ try {
                 transition: background-color 0.2s ease !important;
             `;
             
-            // Close button
             const closeButton = document.createElement('button');
             closeButton.innerHTML = '✕';
             closeButton.style.cssText = `
@@ -1985,7 +1802,6 @@ try {
                 transition: all 0.2s ease !important;
             `;
             
-            // Status message area
             const statusMessage = document.createElement('div');
             statusMessage.id = 'slack-extension-modal-status';
             statusMessage.style.cssText = `
@@ -1998,7 +1814,6 @@ try {
                 transition: all 0.3s ease !important;
             `;
             
-            // Language selection section
             const languageSection = document.createElement('div');
             languageSection.style.cssText = `
                 margin-top: 20px !important;
@@ -2017,7 +1832,6 @@ try {
             `;
             languageTitle.innerHTML = '🌍 Summarization Language';
             
-            // Language options - define this first
             const languages = [
                 { value: 'auto', label: 'Auto (same as message)' },
                 { value: 'English', label: 'English' },
@@ -2045,7 +1859,6 @@ try {
             `;
             languageLabel.textContent = 'Choose the language for AI summaries:';
             
-            // Current language status
             const currentLanguageStatus = document.createElement('div');
             currentLanguageStatus.style.cssText = `
                 margin-bottom: 8px !important;
@@ -2085,7 +1898,6 @@ try {
                 languageSelect.appendChild(option);
             });
             
-            // Language change handler
             languageSelect.addEventListener('change', function() {
                 const selectedLanguage = languageSelect.value;
                 console.log('SLACK EXTENSION: Language dropdown changed to:', selectedLanguage);
@@ -2094,7 +1906,6 @@ try {
                     const selectedLabel = languages.find(l => l.value === selectedLanguage)?.label;
                     showStatus(`🌍 Language preference saved: ${selectedLabel}`, 'success');
                     
-                    // Update status display
                     currentLanguageStatus.innerHTML = `📋 Current setting: <strong>${selectedLabel}</strong>`;
                     
                     console.log('SLACK EXTENSION: Language saved successfully. New value:', selectedLanguage);
@@ -2111,7 +1922,6 @@ try {
             languageSection.appendChild(currentLanguageStatus);
             languageSection.appendChild(languageSelect);
 
-            // Instructions
             const instructions = document.createElement('div');
             instructions.style.cssText = `
                 margin-top: 20px !important;
@@ -2130,7 +1940,6 @@ try {
                 </div>
             `;
             
-            // Event handlers
             function showStatus(message, type) {
                 statusMessage.textContent = message;
                 statusMessage.style.display = 'block';
@@ -2167,7 +1976,6 @@ try {
                     return;
                 }
                 
-                // Validate API key format based on provider
                 if (selectedProvider === 'gemini') {
                     if (!apiKey.startsWith('AIza')) {
                         showStatus('Gemini API key should start with "AIza"', 'error');
@@ -2180,7 +1988,6 @@ try {
                     }
                 }
                 
-                // Save the appropriate API key
                 const saveSuccess = selectedProvider === 'gemini' ? 
                     saveGeminiKey(apiKey) : 
                     saveOpenAIKey(apiKey);
@@ -2223,7 +2030,6 @@ try {
                     let response;
                     
                     if (selectedProvider === 'gemini') {
-                        // Test Gemini API
                         response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
                             method: 'POST',
                             headers: {
@@ -2241,7 +2047,6 @@ try {
                             })
                         });
                     } else {
-                        // Test OpenAI API
                         response = await fetch('https://api.openai.com/v1/chat/completions', {
                             method: 'POST',
                             headers: {
@@ -2274,14 +2079,12 @@ try {
                 overlayBackground.remove();
             });
             
-            // Close on outside click
             overlayBackground.addEventListener('click', function(event) {
                 if (event.target === overlayBackground) {
                     overlayBackground.remove();
                 }
             });
             
-            // Close on Escape key
             function handleKeyDown(event) {
                 if (event.key === 'Escape') {
                     overlayBackground.remove();
@@ -2290,7 +2093,6 @@ try {
             }
             document.addEventListener('keydown', handleKeyDown);
             
-            // Focus input on open
             setTimeout(() => {
                 apiKeyInput.focus();
                 if (apiKeyInput.value) {
@@ -2298,7 +2100,6 @@ try {
                 }
             }, 300);
             
-            // Hover effects
             closeButton.addEventListener('mouseenter', () => {
                 closeButton.style.backgroundColor = '#f1f3f4';
             });
@@ -2317,7 +2118,6 @@ try {
                 });
             });
             
-            // Focus effects for input
             apiKeyInput.addEventListener('focus', () => {
                 apiKeyInput.style.borderColor = '#007a5a';
                 apiKeyInput.style.boxShadow = '0 0 0 3px rgba(0, 122, 90, 0.1)';
@@ -2327,7 +2127,6 @@ try {
                 apiKeyInput.style.boxShadow = 'none';
             });
             
-            // Assemble the modal
             inputContainer.appendChild(apiKeyInput);
             inputContainer.appendChild(toggleButton);
             
@@ -2335,7 +2134,6 @@ try {
             buttonContainer.appendChild(testButton);
             buttonContainer.appendChild(clearButton);
             
-            // Create custom operations section
             const customOperationsSection = createCustomOperationsSection();
             
             modal.appendChild(title);
@@ -2354,7 +2152,6 @@ try {
             overlayBackground.appendChild(modal);
             document.body.appendChild(overlayBackground);
             
-            // Animate in
             setTimeout(() => {
                 modal.style.transform = 'scale(1)';
             }, 10);
@@ -2367,33 +2164,27 @@ try {
         }
     }
 
-    // Setup keyboard shortcuts for extension features
     function setupKeyboardShortcuts() {
         if (typeof document !== 'undefined') {
             document.addEventListener('keydown', (event) => {
-                // Try multiple combinations for API Key Settings
-                // Ctrl+Alt+A = API Key Settings (A for AI) - Primary
                 if (event.ctrlKey && event.altKey && (event.key === 'A' || event.key === 'a')) {
                     event.preventDefault();
                     showAPIKeyOverlay();
                     return;
                 }
                 
-                // Alternative: Ctrl+Shift+A = API Key Settings
                 if (event.ctrlKey && event.shiftKey && (event.key === 'A' || event.key === 'a')) {
                     event.preventDefault();
                     showAPIKeyOverlay();
                     return;
                 }
                 
-                // Alternative: Ctrl+Alt+K = API Key Settings (K for Key)
                 if (event.ctrlKey && event.altKey && (event.key === 'K' || event.key === 'k')) {
                     event.preventDefault();
                     showAPIKeyOverlay();
                     return;
                 }
                 
-                // Alternative: Ctrl+Shift+K = API Key Settings
                 if (event.ctrlKey && event.shiftKey && (event.key === 'K' || event.key === 'k')) {
                     event.preventDefault();
                     showAPIKeyOverlay();
@@ -2405,56 +2196,40 @@ try {
 
 } catch (error) {
     console.error('SLACK EXTENSION: Critical error in main script:', error);
-    // Don't re-throw to avoid breaking Slack startup
 }
 
-// ========================
-// INITIALIZATION
-// ========================
 
 console.log('SLACK EXTENSION: ✅ Loaded successfully!');
 
-// Set up all monitoring functions
 setTimeout(() => {
-    // Set up message action monitoring (for AI buttons)
     setupMessageActionsMonitoring();
     
-    // Set up keyboard shortcuts (including API key settings)
     setupKeyboardShortcuts();
     
-    // Add the composer AI enhancement button
     if (!tryAddAIButton()) {
-        // If it fails initially, set up a watcher for when the composer appears
         setupComposerWatcher();
     }
     
-    // Set up enhanced monitoring to keep the composer button alive
     setupButtonMonitoring();
 }, 2000);
 
-// Test function for language functionality
 function testLanguageStorage() {
     console.log('=== SLACK EXTENSION: Language Storage Test ===');
     
     try {
-        // Test current language
         const currentLang = getSummarizationLanguage();
         console.log('Current language:', currentLang);
         
-        // Test saving a language
         console.log('Testing save Hebrew...');
         const saveResult = saveSummarizationLanguage('Hebrew');
         console.log('Save result:', saveResult);
         
-        // Test retrieving the saved language
         const retrievedLang = getSummarizationLanguage();
         console.log('Retrieved language:', retrievedLang);
         
-        // Test localStorage directly
         const directValue = localStorage.getItem('slack_extension_summarization_language');
         console.log('Direct localStorage value:', directValue);
         
-        // Test all localStorage keys
         console.log('All localStorage keys with slack_extension:');
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -2478,7 +2253,6 @@ function testLanguageStorage() {
     }
 }
 
-// Make functions available globally for manual testing
 if (typeof window !== 'undefined') {
     window.slackExtensionAPIKey = showAPIKeyOverlay;
     window.getSummarizationLanguage = getSummarizationLanguage;
