@@ -2,8 +2,6 @@
 
 A powerful Slack desktop extension that adds **AI summarization** and **message enhancement** capabilities directly to your Slack workspace using OpenAI's GPT-4.
 
-*Created with ❤️ by [vibecoding](https://vibecoding.com)*
-
 ## ✨ Features
 
 - **🤖 AI Message Summarization**: Hover over any message and click the ✨ button to get an AI-powered summary
