@@ -1279,11 +1279,9 @@ try {
                 // Event listeners
                 editBtn.addEventListener('click', () => showOperationForm(op));
                                  deleteBtn.addEventListener('click', () => {
-                     if (confirm(`Delete operation "${op.title}"?`)) {
-                         deleteCustomOperation(op.id);
-                         renderOperations();
-                         refreshAIButton(); // Refresh the AI menu to remove deleted operation
-                     }
+                     deleteCustomOperation(op.id);
+                     renderOperations();
+                     refreshAIButton(); // Refresh the AI menu to remove deleted operation
                  });
                 
                 opActions.appendChild(editBtn);
