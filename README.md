@@ -86,6 +86,22 @@ Create personalized AI operations for your specific needs:
 ./slack_patcher.sh restore
 ```
 
+### macOS Integrity Checking
+For macOS users, the patcher includes automatic integrity checking to ensure Slack launches properly after modification:
+
+```bash
+# Calculate file integrity (used automatically by patcher)
+node integrity.js /Applications/Slack.app/Contents/Resources/app.asar
+```
+
+The macOS patcher automatically:
+- Detects your CPU architecture (ARM64/Intel)
+- Calculates checksums for the modified ASAR file
+- Updates Info.plist files with new checksums
+- Ensures Slack's signature validation passes
+
+**Note**: On macOS, the integrity replacement runs from `/Applications/Slack.app/Contents` and updates all files containing the old checksum.
+
 ## 🛠️ Development & Debugging
 
 ### Making Changes
