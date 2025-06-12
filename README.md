@@ -81,13 +81,18 @@ Create personalized AI operations for your specific needs:
 ./slack_patcher.sh
 ```
 
+**For macOS users with integrity checking:**
+```bash
+./slack_patcher-v2.sh
+```
+
 ### Restore Original Slack
 ```bash
 ./slack_patcher.sh restore
 ```
 
 ### macOS Integrity Checking
-For macOS users, the patcher includes automatic integrity checking to ensure Slack launches properly after modification:
+For macOS users, `slack_patcher-v2.sh` includes automatic integrity checking to ensure Slack launches properly after modification:
 
 ```bash
 # Calculate file integrity (used automatically by patcher)
@@ -130,7 +135,7 @@ SLACK_DEVELOPER_MENU=true slack
 ## 📁 Project Structure
 
 - `slack_patcher.sh` - Main patcher script (Linux & macOS)
-- `slack_patcher-v2.sh` - Alternative patcher version
+- `slack_patcher-v2.sh` - macOS patcher with integrity checking
 - `custom_slack_ext.js` - AI extension code
 - `integrity.js` - File integrity calculation (for macOS)
 - `slack_backup/` - Backup directory (auto-created)
