@@ -465,6 +465,34 @@ try {
             menu.appendChild(professionalButton);
             menu.appendChild(casualButton);
             menu.appendChild(shortenButton);
+            
+            // Add custom operations
+            const customOperations = getCustomOperations();
+            if (customOperations.length > 0) {
+                const customSeparator = document.createElement('div');
+                customSeparator.style.cssText = 'height: 1px; background-color: #eee; margin: 4px 0;';
+                menu.appendChild(customSeparator);
+                
+                customOperations.forEach(customOp => {
+                    const customButton = document.createElement('button');
+                    customButton.innerHTML = `⚡ ${customOp.title}`;
+                    customButton.dataset.action = `custom_${customOp.id}`;
+                    customButton.style.cssText = improveButton.style.cssText;
+                    setHoverEffect(customButton);
+                    menu.appendChild(customButton);
+                });
+            }
+            
+            // Add "Manage Custom Operations" button
+            const manageSeparator = document.createElement('div');
+            manageSeparator.style.cssText = 'height: 1px; background-color: #eee; margin: 4px 0;';
+            menu.appendChild(manageSeparator);
+            
+            const manageButton = document.createElement('button');
+            manageButton.innerHTML = '⚙️ Manage Operations';
+            manageButton.style.cssText = `${improveButton.style.cssText} color: #666; font-style: italic;`;
+            setHoverEffect(manageButton);
+            menu.appendChild(manageButton);
 
             // --- Create Main AI Button (which is now a segmented control) ---
             const aiButtonContainer = document.createElement('div');
@@ -628,6 +656,20 @@ try {
             casualButton.addEventListener('click', () => handleAIAction('casual'));
             shortenButton.addEventListener('click', () => handleAIAction('shorten'));
             
+            // Add event listeners for custom operations
+            customOperations.forEach(customOp => {
+                const customButton = menu.querySelector(`[data-action="custom_${customOp.id}"]`);
+                if (customButton) {
+                    customButton.addEventListener('click', () => handleAIAction(`custom_${customOp.id}`));
+                }
+            });
+            
+            // Add event listener for manage button
+            manageButton.addEventListener('click', () => {
+                menu.style.display = 'none';
+                showAPIKeyOverlay();
+            });
+            
             // Find the best place to insert the button
             const actionButtons = composerBody.querySelector('.p-composer__actions') || composerBody;
             actionButtons.appendChild(container);
@@ -639,7 +681,7 @@ try {
         }
     }
 
-    // UPDATED to accept a mode
+    // UPDATED to accept a mode (including custom operations)
     async function enhanceTextWithOpenAI(text, mode = 'improve') {
         const apiKey = getOpenAIKey();
         if (!apiKey) {
@@ -647,7 +689,18 @@ try {
         }
 
         let userPrompt;
-        if (mode === 'translate') {
+        
+        // Check if it's a custom operation
+        if (mode.startsWith('custom_')) {
+            const customId = mode.replace('custom_', '');
+            const customOperations = getCustomOperations();
+            const customOp = customOperations.find(op => op.id === customId);
+            if (customOp) {
+                userPrompt = `${customOp.prompt}\n\nReturn ONLY the response text, without any additional comments, introductions, or formatting.\n\n${text}`;
+            } else {
+                throw new Error('Custom operation not found');
+            }
+        } else if (mode === 'translate') {
             userPrompt = `Translate the following text to English. Return ONLY the translated text, without any additional comments or introductions or formatting.\n\n${text}`;
         } else if (mode === 'fix') {
             userPrompt = `Fix all spelling and grammar mistakes in the following text. Do not change the tone or meaning. Return only the corrected text.\n\n${text}`;
@@ -699,6 +752,18 @@ try {
         return enhancedText;
     }
 
+    // Function to add visual indicator that extension is loaded
+    function addVisualIndicator() {
+        try {
+            // Simple visual indicator - just log for now
+            console.log('SLACK EXTENSION: ✅ Extension loaded and active');
+            return true;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error adding visual indicator:', error);
+            return false;
+        }
+    }
+
     // Function to try adding banner safely
     function tryAddBanner() {
         // Check if we have the necessary APIs
@@ -710,6 +775,15 @@ try {
         
         // Try to add banner
         return addVisualIndicator();
+    }
+
+    // Function to refresh AI button (remove and re-add)
+    function refreshAIButton() {
+        const existingContainer = document.querySelector('.slack-ai-composer-container');
+        if (existingContainer) {
+            existingContainer.remove();
+        }
+        return addAIButton();
     }
 
     // Function to try adding AI button with retries
@@ -728,20 +802,12 @@ try {
         // Add banner
         tryAddBanner();
         
-        // Debug DOM structure immediately and with delay
-        console.log('SLACK EXTENSION: About to call debugDOMStructure immediately...');
-        debugDOMStructure();
-        
-        console.log('SLACK EXTENSION: Setting up delayed debug call...');
-        setTimeout(() => {
-            console.log('SLACK EXTENSION: Delayed debug call executing...');
-            debugDOMStructure();
-        }, 3000);
-        
-        setTimeout(() => {
-            console.log('SLACK EXTENSION: Second delayed debug call executing...');
-            debugDOMStructure();
-        }, 10000);
+        // Debug DOM structure
+        console.log('SLACK EXTENSION: DOM structure check - composer elements:', {
+            composerBody: !!document.querySelector('.p-composer__body'),
+            composerActions: !!document.querySelector('.p-composer__actions'),
+            messageInput: !!document.querySelector('[data-qa="message_input"]')
+        });
         
         // Try to add AI button immediately
         if (!tryAddAIButton()) {
@@ -919,6 +985,381 @@ try {
         }
     }
 
+    // Functions to manage custom operations
+    function getCustomOperations() {
+        try {
+            const stored = localStorage.getItem('slack_extension_custom_operations');
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error getting custom operations:', error);
+            return [];
+        }
+    }
+
+    function saveCustomOperations(operations) {
+        try {
+            localStorage.setItem('slack_extension_custom_operations', JSON.stringify(operations));
+            console.log('SLACK EXTENSION: Custom operations saved to localStorage');
+            return true;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error saving custom operations:', error);
+            return false;
+        }
+    }
+
+    function addCustomOperation(title, prompt) {
+        try {
+            const operations = getCustomOperations();
+            const newOperation = {
+                id: Date.now().toString(),
+                title: title.trim(),
+                prompt: prompt.trim()
+            };
+            operations.push(newOperation);
+            return saveCustomOperations(operations) ? newOperation : null;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error adding custom operation:', error);
+            return null;
+        }
+    }
+
+    function updateCustomOperation(id, title, prompt) {
+        try {
+            const operations = getCustomOperations();
+            const index = operations.findIndex(op => op.id === id);
+            if (index !== -1) {
+                operations[index] = { id, title: title.trim(), prompt: prompt.trim() };
+                return saveCustomOperations(operations);
+            }
+            return false;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error updating custom operation:', error);
+            return false;
+        }
+    }
+
+    function deleteCustomOperation(id) {
+        try {
+            const operations = getCustomOperations();
+            const filtered = operations.filter(op => op.id !== id);
+            return saveCustomOperations(filtered);
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error deleting custom operation:', error);
+            return false;
+        }
+    }
+
+    // Function to create custom operations management UI
+    function createCustomOperationsSection() {
+        const customOperations = getCustomOperations();
+        
+        const section = document.createElement('div');
+        section.style.cssText = `
+            margin-top: 25px !important;
+            padding-top: 20px !important;
+            border-top: 1px solid #e1e5e9 !important;
+        `;
+        
+        // Custom Operations Title
+        const customTitle = document.createElement('h3');
+        customTitle.style.cssText = `
+            margin: 0 0 15px 0 !important;
+            font-size: 18px !important;
+            font-weight: 600 !important;
+            color: #1d1c1d !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        `;
+        customTitle.innerHTML = '⚡ Custom Operations';
+        
+        // Add Operation Button
+        const addButton = document.createElement('button');
+        addButton.innerHTML = '+ Add Operation';
+        addButton.style.cssText = `
+            padding: 8px 16px !important;
+            background: #007a5a !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            margin-bottom: 15px !important;
+            transition: background-color 0.2s ease !important;
+        `;
+        
+        // Operations List
+        const operationsList = document.createElement('div');
+        operationsList.id = 'custom-operations-list';
+        
+        function renderOperations() {
+            operationsList.innerHTML = '';
+            const currentOperations = getCustomOperations();
+            
+            if (currentOperations.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.style.cssText = `
+                    padding: 20px !important;
+                    text-align: center !important;
+                    color: #666 !important;
+                    font-style: italic !important;
+                    background: #f8f9fa !important;
+                    border-radius: 6px !important;
+                    border: 1px dashed #ddd !important;
+                `;
+                emptyMessage.textContent = 'No custom operations yet. Click "Add Operation" to create your first one.';
+                operationsList.appendChild(emptyMessage);
+                return;
+            }
+            
+            currentOperations.forEach(op => {
+                const opItem = document.createElement('div');
+                opItem.style.cssText = `
+                    padding: 12px !important;
+                    border: 1px solid #e1e5e9 !important;
+                    border-radius: 6px !important;
+                    margin-bottom: 10px !important;
+                    background: #f8f9fa !important;
+                `;
+                
+                const opHeader = document.createElement('div');
+                opHeader.style.cssText = `
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    margin-bottom: 8px !important;
+                `;
+                
+                const opTitle = document.createElement('strong');
+                opTitle.textContent = op.title;
+                opTitle.style.cssText = `
+                    color: #1d1c1d !important;
+                    font-size: 14px !important;
+                `;
+                
+                const opActions = document.createElement('div');
+                opActions.style.cssText = `
+                    display: flex !important;
+                    gap: 5px !important;
+                `;
+                
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '✏️';
+                editBtn.title = 'Edit';
+                editBtn.style.cssText = `
+                    padding: 4px 8px !important;
+                    background: #0066cc !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 3px !important;
+                    cursor: pointer !important;
+                    font-size: 12px !important;
+                `;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.title = 'Delete';
+                deleteBtn.style.cssText = `
+                    padding: 4px 8px !important;
+                    background: #dc3545 !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 3px !important;
+                    cursor: pointer !important;
+                    font-size: 12px !important;
+                `;
+                
+                const opPrompt = document.createElement('div');
+                opPrompt.textContent = op.prompt.length > 100 ? op.prompt.substring(0, 100) + '...' : op.prompt;
+                opPrompt.style.cssText = `
+                    color: #666 !important;
+                    font-size: 12px !important;
+                    line-height: 1.4 !important;
+                    font-family: Monaco, Consolas, monospace !important;
+                    background: white !important;
+                    padding: 8px !important;
+                    border-radius: 4px !important;
+                    border: 1px solid #e1e5e9 !important;
+                `;
+                
+                // Event listeners
+                editBtn.addEventListener('click', () => showOperationForm(op));
+                                 deleteBtn.addEventListener('click', () => {
+                     if (confirm(`Delete operation "${op.title}"?`)) {
+                         deleteCustomOperation(op.id);
+                         renderOperations();
+                         refreshAIButton(); // Refresh the AI menu to remove deleted operation
+                     }
+                 });
+                
+                opActions.appendChild(editBtn);
+                opActions.appendChild(deleteBtn);
+                opHeader.appendChild(opTitle);
+                opHeader.appendChild(opActions);
+                opItem.appendChild(opHeader);
+                opItem.appendChild(opPrompt);
+                operationsList.appendChild(opItem);
+            });
+        }
+        
+        function showOperationForm(existingOp = null) {
+            const formOverlay = document.createElement('div');
+            formOverlay.style.cssText = `
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0, 0, 0, 0.8) !important;
+                z-index: 1000000 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            `;
+            
+            const form = document.createElement('div');
+            form.style.cssText = `
+                background: white !important;
+                padding: 25px !important;
+                border-radius: 8px !important;
+                width: 90% !important;
+                max-width: 500px !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+            `;
+            
+            const formTitle = document.createElement('h3');
+            formTitle.textContent = existingOp ? 'Edit Operation' : 'Add New Operation';
+            formTitle.style.cssText = `
+                margin: 0 0 20px 0 !important;
+                color: #1d1c1d !important;
+            `;
+            
+            const titleLabel = document.createElement('label');
+            titleLabel.textContent = 'Operation Title:';
+            titleLabel.style.cssText = `
+                display: block !important;
+                margin-bottom: 5px !important;
+                font-weight: 600 !important;
+                color: #1d1c1d !important;
+            `;
+            
+            const titleInput = document.createElement('input');
+            titleInput.type = 'text';
+            titleInput.placeholder = 'e.g., Make Funny, Summarize, etc.';
+            titleInput.value = existingOp ? existingOp.title : '';
+            titleInput.style.cssText = `
+                width: 100% !important;
+                padding: 10px !important;
+                border: 1px solid #e1e5e9 !important;
+                border-radius: 4px !important;
+                margin-bottom: 15px !important;
+                font-size: 14px !important;
+                box-sizing: border-box !important;
+            `;
+            
+            const promptLabel = document.createElement('label');
+            promptLabel.textContent = 'Prompt (the instruction will be automatically appended to return only the response):';
+            promptLabel.style.cssText = `
+                display: block !important;
+                margin-bottom: 5px !important;
+                font-weight: 600 !important;
+                color: #1d1c1d !important;
+            `;
+            
+            const promptInput = document.createElement('textarea');
+            promptInput.placeholder = 'e.g., Rewrite this text to be funny and entertaining...';
+            promptInput.value = existingOp ? existingOp.prompt : '';
+            promptInput.rows = 4;
+            promptInput.style.cssText = `
+                width: 100% !important;
+                padding: 10px !important;
+                border: 1px solid #e1e5e9 !important;
+                border-radius: 4px !important;
+                margin-bottom: 15px !important;
+                font-size: 14px !important;
+                font-family: inherit !important;
+                resize: vertical !important;
+                box-sizing: border-box !important;
+            `;
+            
+            const formButtons = document.createElement('div');
+            formButtons.style.cssText = `
+                display: flex !important;
+                gap: 10px !important;
+                justify-content: flex-end !important;
+            `;
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.style.cssText = `
+                padding: 10px 20px !important;
+                background: #6c757d !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+            `;
+            
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = existingOp ? 'Update' : 'Add';
+            saveBtn.style.cssText = `
+                padding: 10px 20px !important;
+                background: #007a5a !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 4px !important;
+                cursor: pointer !important;
+            `;
+            
+            cancelBtn.addEventListener('click', () => formOverlay.remove());
+            saveBtn.addEventListener('click', () => {
+                const title = titleInput.value.trim();
+                const prompt = promptInput.value.trim();
+                
+                if (!title || !prompt) {
+                    alert('Please fill in both title and prompt');
+                    return;
+                }
+                
+                                 if (existingOp) {
+                     updateCustomOperation(existingOp.id, title, prompt);
+                 } else {
+                     addCustomOperation(title, prompt);
+                 }
+                 
+                 renderOperations();
+                 refreshAIButton(); // Refresh the AI menu to include new/updated operations
+                 formOverlay.remove();
+            });
+            
+            formButtons.appendChild(cancelBtn);
+            formButtons.appendChild(saveBtn);
+            
+            form.appendChild(formTitle);
+            form.appendChild(titleLabel);
+            form.appendChild(titleInput);
+            form.appendChild(promptLabel);
+            form.appendChild(promptInput);
+            form.appendChild(formButtons);
+            
+            formOverlay.appendChild(form);
+            document.body.appendChild(formOverlay);
+            
+            titleInput.focus();
+        }
+        
+        addButton.addEventListener('click', () => showOperationForm());
+        
+        section.appendChild(customTitle);
+        section.appendChild(addButton);
+        section.appendChild(operationsList);
+        
+        renderOperations();
+        
+        return section;
+    }
+
     // Function to create and show API key management overlay
     function showAPIKeyOverlay() {
         try {
@@ -953,9 +1394,9 @@ try {
                 border-radius: 12px !important;
                 padding: 30px !important;
                 box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
-                max-width: 500px !important;
-                width: 90% !important;
-                max-height: 80vh !important;
+                max-width: 600px !important;
+                width: 95% !important;
+                max-height: 90vh !important;
                 overflow-y: auto !important;
                 position: relative !important;
                 transform: scale(0.9) !important;
@@ -973,7 +1414,7 @@ try {
                 align-items: center !important;
                 gap: 10px !important;
             `;
-            title.innerHTML = '🚀 Slack Extension - API Key Settings';
+            title.innerHTML = '🚀 Slack Extension - Settings';
             
             // Subtitle
             const subtitle = document.createElement('p');
@@ -983,7 +1424,7 @@ try {
                 color: #616061 !important;
                 line-height: 1.4 !important;
             `;
-            subtitle.textContent = 'Enter your OpenAI API key to enable AI-powered message summarization. Your key is stored securely in your browser\'s localStorage.';
+            subtitle.textContent = 'Configure your OpenAI API key and manage custom AI operations. All settings are stored securely in your browser\'s localStorage.';
             
             // Current status
             const currentKey = getOpenAIKey();
@@ -1336,6 +1777,9 @@ try {
             buttonContainer.appendChild(testButton);
             buttonContainer.appendChild(clearButton);
             
+            // Create custom operations section
+            const customOperationsSection = createCustomOperationsSection();
+            
             modal.appendChild(title);
             modal.appendChild(subtitle);
             modal.appendChild(statusDiv);
@@ -1344,6 +1788,7 @@ try {
             modal.appendChild(buttonContainer);
             modal.appendChild(statusMessage);
             modal.appendChild(instructions);
+            modal.appendChild(customOperationsSection);
             modal.appendChild(closeButton);
             
             overlayBackground.appendChild(modal);
