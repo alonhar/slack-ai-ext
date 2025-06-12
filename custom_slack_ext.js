@@ -14,10 +14,13 @@ try {
     // Check existing data
     const existingApiKey = localStorage.getItem('slack_extension_openai_key');
     const existingOps = localStorage.getItem('slack_extension_custom_operations');
+    const existingLang = localStorage.getItem('slack_extension_summarization_language');
     console.log('SLACK EXTENSION: Existing data check:', {
         hasApiKey: !!existingApiKey,
         hasCustomOps: !!existingOps,
-        customOpsData: existingOps ? JSON.parse(existingOps) : null
+        customOpsData: existingOps ? JSON.parse(existingOps) : null,
+        hasLanguage: !!existingLang,
+        languageValue: existingLang
     });
 } catch (error) {
     console.error('SLACK EXTENSION: localStorage test failed:', error);
@@ -150,6 +153,17 @@ try {
                 throw new Error('No OpenAI API key found. Please set your API key using Ctrl+Alt+A.');
             }
 
+            const selectedLanguage = getSummarizationLanguage();
+            
+            // Build the system prompt based on language preference
+            let systemPrompt = 'You are a helpful assistant that summarizes Slack messages. Provide a concise, clear summary that captures the key points. Use proper formatting with line breaks where appropriate and bullet points where appropriate.';
+            
+            if (selectedLanguage === 'auto') {
+                systemPrompt += ' Respond in the same language as the original message.';
+            } else {
+                systemPrompt += ` Always respond in ${selectedLanguage}.`;
+            }
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -161,7 +175,7 @@ try {
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are a helpful assistant that summarizes Slack messages. Provide a concise, clear summary that captures the key points. Use proper formatting with line breaks where appropriate and bullet points where appropriates. (if the message is in hebrew so write it in hebrew)'
+                            content: systemPrompt
                         },
                         {
                             role: 'user',
@@ -1073,6 +1087,28 @@ try {
         }
     }
 
+    // Function to save summarization language preference
+    function saveSummarizationLanguage(language) {
+        try {
+            localStorage.setItem('slack_extension_summarization_language', language);
+            console.log('SLACK EXTENSION: Summarization language saved:', language);
+            return true;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error saving summarization language:', error);
+            return false;
+        }
+    }
+
+    // Function to get summarization language preference
+    function getSummarizationLanguage() {
+        try {
+            return localStorage.getItem('slack_extension_summarization_language') || 'auto';
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error getting summarization language:', error);
+            return 'auto';
+        }
+    }
+
     // Functions to manage custom operations
     function getCustomOperations() {
         try {
@@ -1738,6 +1774,119 @@ try {
                 transition: all 0.3s ease !important;
             `;
             
+            // Language selection section
+            const languageSection = document.createElement('div');
+            languageSection.style.cssText = `
+                margin-top: 20px !important;
+                padding: 15px !important;
+                background: #f8f9fa !important;
+                border-radius: 6px !important;
+                border-left: 4px solid #007a5a !important;
+            `;
+            
+            const languageTitle = document.createElement('div');
+            languageTitle.style.cssText = `
+                font-weight: 600 !important;
+                color: #007a5a !important;
+                margin-bottom: 10px !important;
+                font-size: 14px !important;
+            `;
+            languageTitle.innerHTML = '🌍 Summarization Language';
+            
+            // Language options - define this first
+            const languages = [
+                { value: 'auto', label: 'Auto (same as message)' },
+                { value: 'English', label: 'English' },
+                { value: 'Hebrew', label: 'Hebrew (עברית)' },
+                { value: 'Spanish', label: 'Spanish (Español)' },
+                { value: 'French', label: 'French (Français)' },
+                { value: 'German', label: 'German (Deutsch)' },
+                { value: 'Italian', label: 'Italian (Italiano)' },
+                { value: 'Portuguese', label: 'Portuguese (Português)' },
+                { value: 'Russian', label: 'Russian (Русский)' },
+                { value: 'Chinese', label: 'Chinese (中文)' },
+                { value: 'Japanese', label: 'Japanese (日本語)' },
+                { value: 'Korean', label: 'Korean (한국어)' },
+                { value: 'Arabic', label: 'Arabic (العربية)' },
+                { value: 'Dutch', label: 'Dutch (Nederlands)' },
+                { value: 'Polish', label: 'Polish (Polski)' }
+            ];
+            
+            const languageLabel = document.createElement('label');
+            languageLabel.style.cssText = `
+                display: block !important;
+                margin-bottom: 8px !important;
+                font-size: 13px !important;
+                color: #616061 !important;
+            `;
+            languageLabel.textContent = 'Choose the language for AI summaries:';
+            
+            // Current language status
+            const currentLanguageStatus = document.createElement('div');
+            currentLanguageStatus.style.cssText = `
+                margin-bottom: 8px !important;
+                padding: 8px !important;
+                background: #e3f2fd !important;
+                border-radius: 4px !important;
+                font-size: 12px !important;
+                color: #1565c0 !important;
+                border: 1px solid #bbdefb !important;
+            `;
+            const currentLang = getSummarizationLanguage();
+            const currentLangLabel = languages.find(l => l.value === currentLang)?.label || currentLang;
+            currentLanguageStatus.innerHTML = `📋 Current setting: <strong>${currentLangLabel}</strong>`;
+            
+
+            const languageSelect = document.createElement('select');
+            languageSelect.id = 'slack-extension-language-select';
+            languageSelect.style.cssText = `
+                width: 100% !important;
+                padding: 8px 12px !important;
+                border: 2px solid #e1e5e9 !important;
+                border-radius: 6px !important;
+                font-size: 13px !important;
+                background: white !important;
+                cursor: pointer !important;
+                transition: border-color 0.2s ease !important;
+            `;
+            
+            const currentLanguage = getSummarizationLanguage();
+            languages.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.value;
+                option.textContent = lang.label;
+                if (lang.value === currentLanguage) {
+                    option.selected = true;
+                }
+                languageSelect.appendChild(option);
+            });
+            
+            // Language change handler
+            languageSelect.addEventListener('change', function() {
+                const selectedLanguage = languageSelect.value;
+                console.log('SLACK EXTENSION: Language dropdown changed to:', selectedLanguage);
+                
+                if (saveSummarizationLanguage(selectedLanguage)) {
+                    const selectedLabel = languages.find(l => l.value === selectedLanguage)?.label;
+                    showStatus(`🌍 Language preference saved: ${selectedLabel}`, 'success');
+                    
+                    // Update status display
+                    currentLanguageStatus.innerHTML = `📋 Current setting: <strong>${selectedLabel}</strong>`;
+                    
+                    console.log('SLACK EXTENSION: Language saved successfully. New value:', selectedLanguage);
+                } else {
+                    showStatus('Failed to save language preference', 'error');
+                    console.error('SLACK EXTENSION: Failed to save language preference');
+                }
+            });
+            
+
+            
+            languageSection.appendChild(languageTitle);
+            languageSection.appendChild(languageLabel);
+            languageSection.appendChild(currentLanguageStatus);
+            languageSection.appendChild(languageSelect);
+
             // Instructions
             const instructions = document.createElement('div');
             instructions.style.cssText = `
@@ -1930,6 +2079,7 @@ try {
             modal.appendChild(inputContainer);
             modal.appendChild(buttonContainer);
             modal.appendChild(statusMessage);
+            modal.appendChild(languageSection);
             modal.appendChild(instructions);
             modal.appendChild(customOperationsSection);
             modal.appendChild(closeButton);
@@ -2015,7 +2165,56 @@ setTimeout(() => {
     setupButtonMonitoring();
 }, 2000);
 
-// Make API overlay available globally for manual testing
+// Test function for language functionality
+function testLanguageStorage() {
+    console.log('=== SLACK EXTENSION: Language Storage Test ===');
+    
+    try {
+        // Test current language
+        const currentLang = getSummarizationLanguage();
+        console.log('Current language:', currentLang);
+        
+        // Test saving a language
+        console.log('Testing save Hebrew...');
+        const saveResult = saveSummarizationLanguage('Hebrew');
+        console.log('Save result:', saveResult);
+        
+        // Test retrieving the saved language
+        const retrievedLang = getSummarizationLanguage();
+        console.log('Retrieved language:', retrievedLang);
+        
+        // Test localStorage directly
+        const directValue = localStorage.getItem('slack_extension_summarization_language');
+        console.log('Direct localStorage value:', directValue);
+        
+        // Test all localStorage keys
+        console.log('All localStorage keys with slack_extension:');
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('slack_extension')) {
+                console.log(`  ${key}: ${localStorage.getItem(key)}`);
+            }
+        }
+        
+        console.log('=== Language Storage Test Complete ===');
+        return {
+            currentLang,
+            saveResult,
+            retrievedLang,
+            directValue,
+            success: saveResult && retrievedLang === 'Hebrew'
+        };
+        
+    } catch (error) {
+        console.error('Language storage test failed:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Make functions available globally for manual testing
 if (typeof window !== 'undefined') {
     window.slackExtensionAPIKey = showAPIKeyOverlay;
+    window.getSummarizationLanguage = getSummarizationLanguage;
+    window.saveSummarizationLanguage = saveSummarizationLanguage;
+    window.testLanguageStorage = testLanguageStorage;
 } 
