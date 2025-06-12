@@ -118,10 +118,7 @@ The macOS patcher automatically:
 
 
 
-### Debug Mode
-```bash
-SLACK_DEVELOPER_MENU=true slack
-```
+
 
 ## 📁 Project Structure
 
