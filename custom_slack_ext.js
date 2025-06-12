@@ -79,7 +79,7 @@ try {
                     aiButton.style.opacity = '0.6';
                     
                     try {
-                        const summary = await summarizeWithOpenAI(messageText);
+                        const summary = await summarizeWithAI(messageText);
                         
                         if (summary) {
                             displaySummaryUnderMessage(messageElement, summary);
@@ -145,14 +145,120 @@ try {
         }
     }
 
-    // Function to summarize text using OpenAI API
-    async function summarizeWithOpenAI(text) {
+    // Unified AI function that works with both OpenAI and Gemini
+    async function callAI(messages, options = {}) {
+        const provider = getAIProvider();
+        const maxTokens = options.maxTokens || 200;
+        const temperature = options.temperature || 0.3;
+        
+        if (provider === 'gemini') {
+            return await callGemini(messages, { maxTokens, temperature });
+        } else {
+            return await callOpenAI(messages, { maxTokens, temperature });
+        }
+    }
+
+    // Function to call OpenAI API
+    async function callOpenAI(messages, options = {}) {
         try {
             const apiKey = getOpenAIKey();
             if (!apiKey) {
                 throw new Error('No OpenAI API key found. Please set your API key using Ctrl+Alt+A.');
             }
 
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o',
+                    messages: messages,
+                    max_tokens: options.maxTokens || 200,
+                    temperature: options.temperature || 0.3
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content?.trim();
+            
+            if (!content) {
+                throw new Error('No response generated');
+            }
+
+            return content;
+
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error calling OpenAI:', error);
+            throw error;
+        }
+    }
+
+    // Function to call Gemini API
+    async function callGemini(messages, options = {}) {
+        try {
+            const apiKey = getGeminiKey();
+            if (!apiKey) {
+                throw new Error('No Gemini API key found. Please set your API key using Ctrl+Alt+A.');
+            }
+
+            // Convert OpenAI-style messages to Gemini format
+            let prompt = '';
+            messages.forEach(msg => {
+                if (msg.role === 'system') {
+                    prompt += `Instructions: ${msg.content}\n\n`;
+                } else if (msg.role === 'user') {
+                    prompt += msg.content;
+                }
+            });
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        maxOutputTokens: options.maxTokens || 200,
+                        temperature: options.temperature || 0.3
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            
+            if (!content) {
+                throw new Error('No response generated');
+            }
+
+            return content;
+
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error calling Gemini:', error);
+            throw error;
+        }
+    }
+
+    // Function to summarize text using selected AI provider
+    async function summarizeWithAI(text) {
+        try {
             const selectedLanguage = getSummarizationLanguage();
             
             // Build the system prompt based on language preference
@@ -164,45 +270,21 @@ try {
                 systemPrompt += ` Always respond in ${selectedLanguage}.`;
             }
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+            const messages = [
+                {
+                    role: 'system',
+                    content: systemPrompt
                 },
-                body: JSON.stringify({
-                    model: 'gpt-4o',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: systemPrompt
-                        },
-                        {
-                            role: 'user',
-                            content: `Please summarize this Slack message:\n\n${text}`
-                        }
-                    ],
-                    max_tokens: 200,
-                    temperature: 0.3
-                })
-            });
+                {
+                    role: 'user',
+                    content: `Please summarize this Slack message:\n\n${text}`
+                }
+            ];
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error?.message || `HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            const summary = data.choices?.[0]?.message?.content?.trim();
-            
-            if (!summary) {
-                throw new Error('No summary generated');
-            }
-
-            return summary;
+            return await callAI(messages, { maxTokens: 200, temperature: 0.3 });
 
         } catch (error) {
-            console.error('SLACK EXTENSION: Error summarizing with OpenAI:', error);
+            console.error('SLACK EXTENSION: Error summarizing with AI:', error);
             throw error;
         }
     }
@@ -650,7 +732,7 @@ try {
                     const cleanedText = currentText.replace(/\s*Message\s+.*$/i, '').trim();
                     if (!cleanedText) throw new Error("Input is empty");
                     
-                    const enhancedText = await enhanceTextWithOpenAI(cleanedText, mode);
+                                            const enhancedText = await enhanceTextWithAI(cleanedText, mode);
                     if (!enhancedText) throw new Error("No text returned from AI");
                     
                     // Use a more robust text replacement method that handles rich text (like @mentions)
@@ -717,10 +799,12 @@ try {
     }
 
     // UPDATED to accept a mode (including custom operations)
-    async function enhanceTextWithOpenAI(text, mode = 'improve') {
-        const apiKey = getOpenAIKey();
+    async function enhanceTextWithAI(text, mode = 'improve') {
+        // Check if we have the required API key for the selected provider
+        const provider = getAIProvider();
+        const apiKey = provider === 'gemini' ? getGeminiKey() : getOpenAIKey();
         if (!apiKey) {
-            throw new Error('OpenAI API key not found. Please set it using Ctrl+Alt+A.');
+            throw new Error(`${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API key not found. Please set it using Ctrl+Alt+A.`);
         }
 
         let userPrompt;
@@ -749,39 +833,21 @@ try {
             userPrompt = `This is a slack message, please correct my mistakes and keep the way I wrote it but improve it(write only the text.. without any introduction)\n\n${text}`;
         }
 
-        console.log(`SLACK EXTENSION: Sending to OpenAI (mode: ${mode}):`, JSON.stringify({ prompt: userPrompt }, null, 2));
+        console.log(`SLACK EXTENSION: Sending to ${provider} (mode: ${mode}):`, JSON.stringify({ prompt: userPrompt }, null, 2));
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [
-                    {
-                        role: 'user',
-                        content: userPrompt
-                    }
-                ],
-                max_tokens: 500,
-                temperature: 0.7
-            })
-        });
+        const messages = [
+            {
+                role: 'user',
+                content: userPrompt
+            }
+        ];
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const enhancedText = data.choices?.[0]?.message?.content?.trim();
+        const enhancedText = await callAI(messages, { maxTokens: 500, temperature: 0.7 });
         
-        console.log("SLACK EXTENSION: Received from OpenAI:", JSON.stringify({ enhancedText, fullResponse: data }, null, 2));
+        console.log(`SLACK EXTENSION: Received from ${provider}:`, JSON.stringify({ enhancedText }, null, 2));
         
         if (!enhancedText) {
-            throw new Error('Invalid response format from OpenAI');
+            throw new Error(`Invalid response format from ${provider}`);
         }
 
         return enhancedText;
@@ -1106,6 +1172,61 @@ try {
         } catch (error) {
             console.error('SLACK EXTENSION: Error getting summarization language:', error);
             return 'auto';
+        }
+    }
+
+    // Function to save AI provider preference (openai or gemini)
+    function saveAIProvider(provider) {
+        try {
+            localStorage.setItem('slack_extension_ai_provider', provider);
+            console.log('SLACK EXTENSION: AI provider saved:', provider);
+            return true;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error saving AI provider:', error);
+            return false;
+        }
+    }
+
+    // Function to get AI provider preference
+    function getAIProvider() {
+        try {
+            return localStorage.getItem('slack_extension_ai_provider') || 'openai';
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error getting AI provider:', error);
+            return 'openai';
+        }
+    }
+
+    // Function to save Gemini API key
+    function saveGeminiKey(apiKey) {
+        try {
+            localStorage.setItem('slack_extension_gemini_key', apiKey);
+            console.log('SLACK EXTENSION: Gemini API key saved to localStorage');
+            return true;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error saving Gemini API key:', error);
+            return false;
+        }
+    }
+
+    // Function to get Gemini API key
+    function getGeminiKey() {
+        try {
+            return localStorage.getItem('slack_extension_gemini_key') || '';
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error getting Gemini API key:', error);
+            return '';
+        }
+    }
+
+    // Function to remove Gemini API key
+    function removeGeminiKey() {
+        try {
+            localStorage.removeItem('slack_extension_gemini_key');
+            return true;
+        } catch (error) {
+            console.error('SLACK EXTENSION: Error removing Gemini API key:', error);
+            return false;
         }
     }
 
@@ -1603,10 +1724,88 @@ try {
                 color: #616061 !important;
                 line-height: 1.4 !important;
             `;
-            subtitle.textContent = 'Configure your OpenAI API key and manage custom AI operations. All settings are stored securely in your browser\'s localStorage.';
+            subtitle.textContent = 'Configure your AI provider and API keys. All settings are stored securely in your browser\'s localStorage.';
+            
+            // AI Provider Selection Section
+            const providerSection = document.createElement('div');
+            providerSection.style.cssText = `
+                margin-bottom: 20px !important;
+                padding: 15px !important;
+                background: #f8f9fa !important;
+                border-radius: 6px !important;
+                border-left: 4px solid #007a5a !important;
+            `;
+            
+            const providerTitle = document.createElement('div');
+            providerTitle.style.cssText = `
+                font-weight: 600 !important;
+                color: #007a5a !important;
+                margin-bottom: 10px !important;
+                font-size: 14px !important;
+            `;
+            providerTitle.innerHTML = '🤖 AI Provider';
+            
+            const providerLabel = document.createElement('label');
+            providerLabel.style.cssText = `
+                display: block !important;
+                margin-bottom: 8px !important;
+                font-size: 13px !important;
+                color: #616061 !important;
+            `;
+            providerLabel.textContent = 'Choose your AI provider:';
+            
+            const providerSelect = document.createElement('select');
+            providerSelect.id = 'slack-extension-provider-select';
+            providerSelect.style.cssText = `
+                width: 100% !important;
+                padding: 8px 12px !important;
+                border: 2px solid #e1e5e9 !important;
+                border-radius: 6px !important;
+                font-size: 13px !important;
+                background: white !important;
+                cursor: pointer !important;
+                transition: border-color 0.2s ease !important;
+                margin-bottom: 10px !important;
+            `;
+            
+            const providers = [
+                { value: 'openai', label: 'OpenAI (GPT-4)' },
+                { value: 'gemini', label: 'Google Gemini' }
+            ];
+            
+            const currentProvider = getAIProvider();
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider.value;
+                option.textContent = provider.label;
+                if (provider.value === currentProvider) {
+                    option.selected = true;
+                }
+                providerSelect.appendChild(option);
+            });
+            
+            // Provider change handler
+            providerSelect.addEventListener('change', function() {
+                const selectedProvider = providerSelect.value;
+                console.log('SLACK EXTENSION: Provider changed to:', selectedProvider);
+                
+                if (saveAIProvider(selectedProvider)) {
+                    updateStatusDisplay();
+                    updateInputLabel();
+                    updateApiKeyInput();
+                    showStatus(`🤖 AI provider changed to ${selectedProvider === 'gemini' ? 'Gemini' : 'OpenAI'}`, 'success');
+                } else {
+                    showStatus('Failed to save AI provider preference', 'error');
+                }
+            });
+            
+            providerSection.appendChild(providerTitle);
+            providerSection.appendChild(providerLabel);
+            providerSection.appendChild(providerSelect);
             
             // Current status
-            const currentKey = getOpenAIKey();
+            const currentOpenAIKey = getOpenAIKey();
+            const currentGeminiKey = getGeminiKey();
             const statusDiv = document.createElement('div');
             statusDiv.style.cssText = `
                 margin-bottom: 20px !important;
@@ -1616,17 +1815,25 @@ try {
                 font-weight: 500 !important;
             `;
             
-            if (currentKey) {
-                statusDiv.style.background = '#d4edda';
-                statusDiv.style.color = '#155724';
-                statusDiv.style.border = '1px solid #c3e6cb';
-                statusDiv.innerHTML = '✅ API key is set (•••' + currentKey.slice(-4) + ')';
-            } else {
-                statusDiv.style.background = '#f8d7da';
-                statusDiv.style.color = '#721c24';
-                statusDiv.style.border = '1px solid #f5c6cb';
-                statusDiv.innerHTML = '❌ No API key set';
+            function updateStatusDisplay() {
+                const selectedProvider = providerSelect.value;
+                const currentKey = selectedProvider === 'gemini' ? currentGeminiKey : currentOpenAIKey;
+                const providerName = selectedProvider === 'gemini' ? 'Gemini' : 'OpenAI';
+                
+                if (currentKey) {
+                    statusDiv.style.background = '#d4edda';
+                    statusDiv.style.color = '#155724';
+                    statusDiv.style.border = '1px solid #c3e6cb';
+                    statusDiv.innerHTML = `✅ ${providerName} API key is set (•••${currentKey.slice(-4)})`;
+                } else {
+                    statusDiv.style.background = '#f8d7da';
+                    statusDiv.style.color = '#721c24';
+                    statusDiv.style.border = '1px solid #f5c6cb';
+                    statusDiv.innerHTML = `❌ No ${providerName} API key set`;
+                }
             }
+            
+            updateStatusDisplay();
             
             // Input section
             const inputLabel = document.createElement('label');
@@ -1637,7 +1844,13 @@ try {
                 font-weight: 600 !important;
                 color: #1d1c1d !important;
             `;
-            inputLabel.textContent = 'OpenAI API Key:';
+            
+            function updateInputLabel() {
+                const selectedProvider = providerSelect.value;
+                inputLabel.textContent = selectedProvider === 'gemini' ? 'Gemini API Key:' : 'OpenAI API Key:';
+            }
+            
+            updateInputLabel();
             
             const inputContainer = document.createElement('div');
             inputContainer.style.cssText = `
@@ -1650,8 +1863,19 @@ try {
             const apiKeyInput = document.createElement('input');
             apiKeyInput.id = 'slack-extension-modal-api-input';
             apiKeyInput.type = 'password';
-            apiKeyInput.placeholder = 'sk-proj-...';
-            apiKeyInput.value = currentKey || '';
+            
+            function updateApiKeyInput() {
+                const selectedProvider = providerSelect.value;
+                if (selectedProvider === 'gemini') {
+                    apiKeyInput.placeholder = 'AIza...';
+                    apiKeyInput.value = currentGeminiKey || '';
+                } else {
+                    apiKeyInput.placeholder = 'sk-proj-...';
+                    apiKeyInput.value = currentOpenAIKey || '';
+                }
+            }
+            
+            updateApiKeyInput();
             apiKeyInput.style.cssText = `
                 flex: 1 !important;
                 padding: 12px 16px !important;
@@ -1899,7 +2123,8 @@ try {
             instructions.innerHTML = `
                 <div style="font-weight: 600; color: #007a5a; margin-bottom: 8px;">📋 Quick Guide:</div>
                 <div style="font-size: 13px; color: #616061; line-height: 1.5;">
-                    • Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #007a5a;">OpenAI Platform</a><br>
+                    • Get OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #007a5a;">OpenAI Platform</a><br>
+                    • Get Gemini API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #007a5a;">Google AI Studio</a><br>
                     • Hover over any message and click the ✨ button to summarize<br>
                     • Use <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">Ctrl+Alt+A</code> to open this settings panel
                 </div>
@@ -1935,39 +2160,57 @@ try {
             
             saveButton.addEventListener('click', function() {
                 const apiKey = apiKeyInput.value.trim();
+                const selectedProvider = providerSelect.value;
+                
                 if (!apiKey) {
                     showStatus('Please enter an API key', 'error');
                     return;
                 }
                 
-                if (!apiKey.startsWith('sk-')) {
-                    showStatus('API key should start with "sk-"', 'error');
-                    return;
+                // Validate API key format based on provider
+                if (selectedProvider === 'gemini') {
+                    if (!apiKey.startsWith('AIza')) {
+                        showStatus('Gemini API key should start with "AIza"', 'error');
+                        return;
+                    }
+                } else {
+                    if (!apiKey.startsWith('sk-')) {
+                        showStatus('OpenAI API key should start with "sk-"', 'error');
+                        return;
+                    }
                 }
                 
-                if (saveOpenAIKey(apiKey)) {
-                    showStatus('✅ API key saved successfully!', 'success');
-                    // Update status display
-                    statusDiv.style.background = '#d4edda';
-                    statusDiv.style.color = '#155724';
-                    statusDiv.innerHTML = '✅ API key is set (•••' + apiKey.slice(-4) + ')';
+                // Save the appropriate API key
+                const saveSuccess = selectedProvider === 'gemini' ? 
+                    saveGeminiKey(apiKey) : 
+                    saveOpenAIKey(apiKey);
+                
+                if (saveSuccess) {
+                    showStatus(`✅ ${selectedProvider === 'gemini' ? 'Gemini' : 'OpenAI'} API key saved successfully!`, 'success');
+                    updateStatusDisplay();
                 } else {
                     showStatus('Failed to save API key', 'error');
                 }
             });
             
             clearButton.addEventListener('click', function() {
+                const selectedProvider = providerSelect.value;
                 apiKeyInput.value = '';
-                removeOpenAIKey();
-                showStatus('🗑️ API key cleared', 'info');
-                // Update status display
-                statusDiv.style.background = '#f8d7da';
-                statusDiv.style.color = '#721c24';
-                statusDiv.innerHTML = '❌ No API key set';
+                
+                if (selectedProvider === 'gemini') {
+                    removeGeminiKey();
+                } else {
+                    removeOpenAIKey();
+                }
+                
+                showStatus(`🗑️ ${selectedProvider === 'gemini' ? 'Gemini' : 'OpenAI'} API key cleared`, 'info');
+                updateStatusDisplay();
             });
             
             testButton.addEventListener('click', async function() {
                 const apiKey = apiKeyInput.value.trim();
+                const selectedProvider = providerSelect.value;
+                
                 if (!apiKey) {
                     showStatus('Please enter an API key to test', 'error');
                     return;
@@ -1977,21 +2220,44 @@ try {
                 testButton.disabled = true;
                 
                 try {
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify({
-                            model: 'gpt-4o',
-                            messages: [{ role: 'user', content: 'Say "API test successful"' }],
-                            max_tokens: 10
-                        })
-                    });
+                    let response;
+                    
+                    if (selectedProvider === 'gemini') {
+                        // Test Gemini API
+                        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: 'Say "API test successful"'
+                                    }]
+                                }],
+                                generationConfig: {
+                                    maxOutputTokens: 10
+                                }
+                            })
+                        });
+                    } else {
+                        // Test OpenAI API
+                        response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: 'gpt-4o',
+                                messages: [{ role: 'user', content: 'Say "API test successful"' }],
+                                max_tokens: 10
+                            })
+                        });
+                    }
                     
                     if (response.ok) {
-                        showStatus('🎉 API key is working correctly!', 'success');
+                        showStatus(`🎉 ${selectedProvider === 'gemini' ? 'Gemini' : 'OpenAI'} API key is working correctly!`, 'success');
                     } else {
                         const errorData = await response.json().catch(() => ({}));
                         showStatus(`❌ API test failed: ${errorData.error?.message || 'Unknown error'}`, 'error');
@@ -2027,7 +2293,7 @@ try {
             // Focus input on open
             setTimeout(() => {
                 apiKeyInput.focus();
-                if (currentKey) {
+                if (apiKeyInput.value) {
                     apiKeyInput.select();
                 }
             }, 300);
@@ -2074,6 +2340,7 @@ try {
             
             modal.appendChild(title);
             modal.appendChild(subtitle);
+            modal.appendChild(providerSection);
             modal.appendChild(statusDiv);
             modal.appendChild(inputLabel);
             modal.appendChild(inputContainer);
